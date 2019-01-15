@@ -14,9 +14,9 @@ Renders triangle to screen.
 /* Helper for triRender, which assumes that the points are in counterclockwise
 	 order and a is the leftmost point, possibly tied with b or c, then renders
 	 the traingle to the screen. */
-void triRenderALeft(const double a[], const double b[], const double c[],
-	const double rgb[], const double alpha[3], const double beta[3],
-		const double gamma[3]) {
+void triRenderALeft(const double a[2], const double b[2], const double c[2],
+	const double rgb[3], const texTexture *tex, const double alpha[2],
+	const double beta[2], const double gamma[2]) {
 
 			/* Calculate inverse m for interpolating alpha, beta, and gamma. */
 			double bMinusA[2];
@@ -44,18 +44,19 @@ void triRenderALeft(const double a[], const double b[], const double c[],
 					}
 					for (int x1 = (int)ceil(x0*bottomSlope - a[0]*bottomSlope + a[1]);
 						x1 <= (int)floor(x0*topLeftSlope - c[0]*topLeftSlope + c[1]); x1++) {
-							double pAndQ[2];
+							double pAndQ[2], sample[3];
 							double x[2] = {x0, x1};
 							double xMinusA[2];
 							vecSubtract(2, x, a, xMinusA);
 							mat221Multiply(mInv, xMinusA, pAndQ);
-							pixSetRGB(x0, x1,
-								 				rgb[0] * (alpha[0] + pAndQ[0] * (beta[0] - alpha[0]) +
-												                     pAndQ[1] * (gamma[0] - alpha[0])),
-												rgb[1] * (alpha[1] + pAndQ[0] * (beta[1] - alpha[1]) +
-																	           pAndQ[1] * (gamma[1] - alpha[1])),
-											  rgb[2] * (alpha[2] + pAndQ[0] * (beta[2] - alpha[2]) +
-												                     pAndQ[1] * (gamma[2] - alpha[2])));
+							double s = alpha[0] + pAndQ[0] * (beta[0] - alpha[0]) +
+																	  pAndQ[1] * (gamma[0] - alpha[0]);
+							double t = alpha[1] + pAndQ[0] * (beta[1] - alpha[1]) +
+																	  pAndQ[1] * (gamma[1] - alpha[1]);
+							texSample(tex, s, t, sample);
+							pixSetRGB(x0, x1, rgb[0]*sample[0],
+																rgb[1]*sample[1],
+																rgb[2]*sample[2]);
 					}
 				}
 				/* Draw right half of triangle or whole triangle if a[0] == c[0]. */
@@ -66,18 +67,19 @@ void triRenderALeft(const double a[], const double b[], const double c[],
 					}
 					for (int x1 = (int)ceil(x0*bottomSlope - a[0]*bottomSlope + a[1]);
 						x1 <= (int)floor(x0*topRightSlope - c[0]*topRightSlope + c[1]); x1++) {
-							double pAndQ[2];
+							double pAndQ[2], sample[3];
 							double x[2] = {x0, x1};
 							double xMinusA[2];
 							vecSubtract(2, x, a, xMinusA);
 							mat221Multiply(mInv, xMinusA, pAndQ);
-							pixSetRGB(x0, x1,
-								 				rgb[0] * (alpha[0] + pAndQ[0] * (beta[0] - alpha[0]) +
-												                     pAndQ[1] * (gamma[0] - alpha[0])),
-												rgb[1] * (alpha[1] + pAndQ[0] * (beta[1] - alpha[1]) +
-																	           pAndQ[1] * (gamma[1] - alpha[1])),
-											  rgb[2] * (alpha[2] + pAndQ[0] * (beta[2] - alpha[2]) +
-												                     pAndQ[1] * (gamma[2] - alpha[2])));
+							double s = alpha[0] + pAndQ[0] * (beta[0] - alpha[0]) +
+																	  pAndQ[1] * (gamma[0] - alpha[0]);
+							double t = alpha[1] + pAndQ[0] * (beta[1] - alpha[1]) +
+																	  pAndQ[1] * (gamma[1] - alpha[1]);
+							texSample(tex, s, t, sample);
+							pixSetRGB(x0, x1, rgb[0]*sample[0],
+																rgb[1]*sample[1],
+																rgb[2]*sample[2]);
 					}
 				}
 			}
@@ -94,18 +96,19 @@ void triRenderALeft(const double a[], const double b[], const double c[],
 					}
 					for (int x1 = (int)ceil(x0*bottomLeftSlope - a[0]*bottomLeftSlope + a[1]);
 						x1 <= (int)floor(x0*topSlope - c[0]*topSlope + c[1]); x1++) {
-							double pAndQ[2];
+							double pAndQ[2], sample[3];
 							double x[2] = {x0, x1};
 							double xMinusA[2];
 							vecSubtract(2, x, a, xMinusA);
 							mat221Multiply(mInv, xMinusA, pAndQ);
-							pixSetRGB(x0, x1,
-								 				rgb[0] * (alpha[0] + pAndQ[0] * (beta[0] - alpha[0]) +
-												                     pAndQ[1] * (gamma[0] - alpha[0])),
-												rgb[1] * (alpha[1] + pAndQ[0] * (beta[1] - alpha[1]) +
-																	           pAndQ[1] * (gamma[1] - alpha[1])),
-											  rgb[2] * (alpha[2] + pAndQ[0] * (beta[2] - alpha[2]) +
-												                     pAndQ[1] * (gamma[2] - alpha[2])));
+							double s = alpha[0] + pAndQ[0] * (beta[0] - alpha[0]) +
+																	  pAndQ[1] * (gamma[0] - alpha[0]);
+							double t = alpha[1] + pAndQ[0] * (beta[1] - alpha[1]) +
+																	  pAndQ[1] * (gamma[1] - alpha[1]);
+							texSample(tex, s, t, sample);
+							pixSetRGB(x0, x1, rgb[0]*sample[0],
+																rgb[1]*sample[1],
+																rgb[2]*sample[2]);
 					}
 				}
 				/* Draw right half of triangle, bisected by b[0]. */
@@ -116,18 +119,19 @@ void triRenderALeft(const double a[], const double b[], const double c[],
 					}
 					for (int x1 = (int)ceil(x0*bottomRightSlope - b[0]*bottomRightSlope + b[1]);
 						x1 <= (int)floor(x0*topSlope - a[0]*topSlope + a[1]); x1++) {
-							double pAndQ[2];
+							double pAndQ[2], sample[3];
 							double x[2] = {x0, x1};
 							double xMinusA[2];
 							vecSubtract(2, x, a, xMinusA);
 							mat221Multiply(mInv, xMinusA, pAndQ);
-							pixSetRGB(x0, x1,
-								 				rgb[0] * (alpha[0] + pAndQ[0] * (beta[0] - alpha[0]) +
-												                     pAndQ[1] * (gamma[0] - alpha[0])),
-												rgb[1] * (alpha[1] + pAndQ[0] * (beta[1] - alpha[1]) +
-																	           pAndQ[1] * (gamma[1] - alpha[1])),
-											  rgb[2] * (alpha[2] + pAndQ[0] * (beta[2] - alpha[2]) +
-												                     pAndQ[1] * (gamma[2] - alpha[2])));
+							double s = alpha[0] + pAndQ[0] * (beta[0] - alpha[0]) +
+																	  pAndQ[1] * (gamma[0] - alpha[0]);
+							double t = alpha[1] + pAndQ[0] * (beta[1] - alpha[1]) +
+																	  pAndQ[1] * (gamma[1] - alpha[1]);
+							texSample(tex, s, t, sample);
+							pixSetRGB(x0, x1, rgb[0]*sample[0],
+																rgb[1]*sample[1],
+																rgb[2]*sample[2]);
 					}
 				}
 			}
@@ -136,19 +140,19 @@ void triRenderALeft(const double a[], const double b[], const double c[],
 /* Takes in 3 pairs of coordinates that are oriented in a counterclockwise
    fashion and renders them to the screen with the colors defined by the r, g,
 	 and b parameters. */
-void triRender(const double a[], const double b[], const double c[],
-	const double rgb[], const double alpha[3], const double beta[3],
-		const double gamma[3]) {
+void triRender(const double a[2], const double b[2], const double c[2],
+	const double rgb[3], const texTexture *tex, const double alpha[2],
+	const double beta[2], const double gamma[2]) {
 			/* If a is leftmost, possibly tied with b or c. */
 			if (a[0] <= b[0] && a[0] <= c[0]) {
-				triRenderALeft(a, b, c, rgb, alpha, beta, gamma);
+				triRenderALeft(a, b, c, rgb, tex, alpha, beta, gamma);
 			}
 			/* If b is leftmost, possibly tied with c. */
 			else if (b[0] <= a[0] && b[0] <= c[0]) {
-				triRenderALeft(b, c, a, rgb, beta, gamma, alpha);
+				triRenderALeft(b, c, a, rgb, tex, beta, gamma, alpha);
 			}
 			/* If c is leftmost. */
 			else {
-				triRenderALeft(c, a, b, rgb, gamma, alpha, beta);
+				triRenderALeft(c, a, b, rgb, tex, gamma, alpha, beta);
 			}
 }

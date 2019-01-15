@@ -1,5 +1,10 @@
+/*
+Dawson d'Almeida and Justin T. Washington
+January 14 2018
+CS311 with Josh Davis
 
-
+General vector functions.
+*/
 
 /*** In general dimensions ***/
 

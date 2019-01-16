@@ -9,6 +9,7 @@ triangles to screen.
 
 #include <stdio.h>
 #include <math.h>
+#include <GLFW/glfw3.h>
 #include "030vector.c"
 #include "030matrix.c"
 #include "040texture.c"
@@ -29,9 +30,9 @@ double gamma_[2] = {0.0, 1.0};
 void render(){
 	pixClearRGB(0.0, 0.0, 0.0);
 	if (tex.filtering == texLINEAR){
-		tex.filtering = texNEAREST;
+		texSetFiltering(&tex, texNEAREST);
 	} else {
-		tex.filtering = texLINEAR;
+		texSetFiltering(&tex, texLINEAR);
 	}
 	texInitializeFile(&tex, "josh_davis_swimmer.jpg");
 	triRender(a, b, c, rgb, &tex, alpha, beta, gamma_);
@@ -39,7 +40,7 @@ void render(){
 
 void handleKeyUp(int key, int shiftIsDown, int controlIsDown,
 		int altOptionIsDown, int superCommandIsDown) {
-			if (key == 32){
+			if (key == GLFW_KEY_ENTER){
 				render();
 			}
 }

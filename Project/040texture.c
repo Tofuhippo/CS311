@@ -1,3 +1,10 @@
+/*
+Dawson d'Almeida and Justin T. Washington
+January 15 2018
+CS311 with Josh Davis
+
+Manages texture resources for 040triangle.c for texture interpolation.
+*/
 
 
 
@@ -200,9 +207,9 @@ void texSample(const texTexture *tex, double s, double t, double sample[]) {
 		double botLeft[tex->texelDim], botRight[tex->texelDim];
 		double topLeft[tex->texelDim], topRight[tex->texelDim];
 		texGetTexel(tex, (int)floor(u), (int)floor(v), botLeft);
-		texGetTexel(tex, (int)floor(u+1), (int)floor(v), botRight);
-		texGetTexel(tex, (int)floor(u), (int)floor(v+1), topLeft);
-		texGetTexel(tex, (int)floor(u+1), (int)floor(v+1), topRight);
+		texGetTexel(tex, (int)ceil(u), (int)floor(v), botRight);
+		texGetTexel(tex, (int)floor(u), (int)ceil(v), topLeft);
+		texGetTexel(tex, (int)ceil(u), (int)ceil(v), topRight);
 
 		double fracU = u - floor(u);
 		double fracV = v - floor(v);

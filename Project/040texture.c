@@ -7,7 +7,6 @@ Manages texture resources for 040triangle.c for texture interpolation.
 */
 
 
-
 /*** Public: For header file ***/
 
 /* These are constants that are set at compile time. For example, whenever the

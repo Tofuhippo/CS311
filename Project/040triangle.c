@@ -1,6 +1,6 @@
 /*
 Dawson d'Almeida and Justin T. Washington
-January 10 2018
+January 15 2018
 CS311 with Josh Davis
 
 Renders triangle to screen.

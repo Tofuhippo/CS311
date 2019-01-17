@@ -33,9 +33,6 @@ double mat22Invert(const double m[2][2], double mInv[2][2]) {
 		mInv[0][1] = -b/det;
 		mInv[1][0] = -c/det;
 		mInv[1][1] = a/det;
-		printf("Inversion complete");
-	} else {
-		printf("Inversion not possible");
 	}
 	return det;
 }

@@ -1,6 +1,6 @@
 /*
 Dawson d'Almeida and Justin T. Washington
-January 17 2018
+January 21 2018
 CS311 with Josh Davis
 
 Renders triangle to screen.
@@ -17,6 +17,7 @@ Renders triangle to screen.
 void triRenderALeft(const shaShading *sha, const double unif[],
 	 const texTexture *tex[], const double a[], const double b[],
 	 const double c[]) {
+
 			/* Calculate inverse m for interpolating alpha, beta, and gamma. */
 			double bMinusA[2], cMinusA[2];
 			double aPos[2] = {a[0], a[1]};
@@ -29,7 +30,7 @@ void triRenderALeft(const shaShading *sha, const double unif[],
 			mat22Columns(bMinusA, cMinusA, m);
 			// If det(m) == 0, then we have a degenerate triangle.
 			if (mat22Invert(m, mInv) == 0.0){
-				printf("Degenerate Triangle");
+				printf("Degenerate Triangle\n");
 			}
 
 			if (c[0] <= b[0]){ // c[0] is between a[0] and b[0] or equal to a[0] or b[0]
@@ -48,22 +49,22 @@ void triRenderALeft(const shaShading *sha, const double unif[],
 							// rgb[3] is the array passed into colorPixel for calculating the
 							// color that we use in pixSetRGB.
 							double rgb[3];
-							// attr holds x0, x1, and other interpolated values
-							// (ex. s and t; r, g, and b; etc...)
-							double attr[sha->attrDim];
+							// vary holds x0, x1, and other interpolated values after vertex
+							// transformation (ex. s and t; r, g, and b; etc...)
+							double vary[sha->varyDim];
 							double pAndQ[2];
 							double x[2] = {x0, x1};
 							double xMinusA[2];
 							vecSubtract(2, x, aPos, xMinusA);
 							mat221Multiply(mInv, xMinusA, pAndQ);
-							attr[0] = x0;
-							attr[1] = x1;
-							for (int i = 2; i < sha->attrDim; i++){
-								attr[i] = a[i] + pAndQ[0] * (b[i] - a[i]) +
+							vary[0] = x0;
+							vary[1] = x1;
+							for (int i = 2; i < sha->varyDim; i++){
+								vary[i] = a[i] + pAndQ[0] * (b[i] - a[i]) +
 																	 pAndQ[1] * (c[i] - a[i]);
 							}
 							colorPixel(sha->unifDim, unif, sha->texNum,
-								         tex, sha->attrDim, attr, rgb);
+								         tex, sha->varyDim, vary, rgb);
 							pixSetRGB(x0, x1, rgb[0], rgb[1], rgb[2]);
 					}
 				}
@@ -78,22 +79,22 @@ void triRenderALeft(const shaShading *sha, const double unif[],
 							// rgb[3] is the array passed into colorPixel for calculating the
 							// color that we use in pixSetRGB.
 							double rgb[3];
-							// attr holds x0, x1, and other interpolated values
-							// (ex. s and t; r, g, and b; etc...)
-							double attr[sha->attrDim];
+							// vary holds x0, x1, and other interpolated values after vertex
+							// transformation (ex. s and t; r, g, and b; etc...)
+							double vary[sha->varyDim];
 							double pAndQ[2];
 							double x[2] = {x0, x1};
 							double xMinusA[2];
 							vecSubtract(2, x, aPos, xMinusA);
 							mat221Multiply(mInv, xMinusA, pAndQ);
-							attr[0] = x0;
-							attr[1] = x1;
-							for (int i = 2; i < sha->attrDim; i++){
-								attr[i] = a[i] + pAndQ[0] * (b[i] - a[i]) +
+							vary[0] = x0;
+							vary[1] = x1;
+							for (int i = 2; i < sha->varyDim; i++){
+								vary[i] = a[i] + pAndQ[0] * (b[i] - a[i]) +
 																	 pAndQ[1] * (c[i] - a[i]);
 							}
 							colorPixel(sha->unifDim, unif, sha->texNum,
-								         tex, sha->attrDim, attr, rgb);
+								         tex, sha->varyDim, vary, rgb);
 							pixSetRGB(x0, x1, rgb[0], rgb[1], rgb[2]);
 					}
 				}
@@ -114,22 +115,22 @@ void triRenderALeft(const shaShading *sha, const double unif[],
 							// rgb[3] is the array passed into colorPixel for calculating the
 							// color that we use in pixSetRGB.
 							double rgb[3];
-							// attr holds x0, x1, and other interpolated values
-							// (ex. s and t; r, g, and b; etc...)
-							double attr[sha->attrDim];
+							// vary holds x0, x1, and other interpolated values after vertex
+							// transformation (ex. s and t; r, g, and b; etc...)
+							double vary[sha->varyDim];
 							double pAndQ[2];
 							double x[2] = {x0, x1};
 							double xMinusA[2];
 							vecSubtract(2, x, aPos, xMinusA);
 							mat221Multiply(mInv, xMinusA, pAndQ);
-							attr[0] = x0;
-							attr[1] = x1;
-							for (int i = 2; i < sha->attrDim; i++){
-								attr[i] = a[i] + pAndQ[0] * (b[i] - a[i]) +
+							vary[0] = x0;
+							vary[1] = x1;
+							for (int i = 2; i < sha->varyDim; i++){
+								vary[i] = a[i] + pAndQ[0] * (b[i] - a[i]) +
 																	 pAndQ[1] * (c[i] - a[i]);
 							}
 							colorPixel(sha->unifDim, unif, sha->texNum,
-								         tex, sha->attrDim, attr, rgb);
+								         tex, sha->varyDim, vary, rgb);
 							pixSetRGB(x0, x1, rgb[0], rgb[1], rgb[2]);
 					}
 				}
@@ -144,22 +145,22 @@ void triRenderALeft(const shaShading *sha, const double unif[],
 							// rgb[3] is the array passed into colorPixel for calculating the
 							// color that we use in pixSetRGB.
 							double rgb[3];
-							// attr holds x0, x1, and other interpolated values
-							// (ex. s and t; r, g, and b; etc...)
-							double attr[sha->attrDim];
+							// vary holds x0, x1, and other interpolated values after vertex
+							// transformation (ex. s and t; r, g, and b; etc...)
+							double vary[sha->varyDim];
 							double pAndQ[2];
 							double x[2] = {x0, x1};
 							double xMinusA[2];
 							vecSubtract(2, x, aPos, xMinusA);
 							mat221Multiply(mInv, xMinusA, pAndQ);
-							attr[0] = x0;
-							attr[1] = x1;
-							for (int i = 2; i < sha->attrDim; i++){
-								attr[i] = a[i] + pAndQ[0] * (b[i] - a[i]) +
+							vary[0] = x0;
+							vary[1] = x1;
+							for (int i = 2; i < sha->varyDim; i++){
+								vary[i] = a[i] + pAndQ[0] * (b[i] - a[i]) +
 																	 pAndQ[1] * (c[i] - a[i]);
 							}
 							colorPixel(sha->unifDim, unif, sha->texNum,
-								         tex, sha->attrDim, attr, rgb);
+								         tex, sha->varyDim, vary, rgb);
 							pixSetRGB(x0, x1, rgb[0], rgb[1], rgb[2]);
 					}
 				}

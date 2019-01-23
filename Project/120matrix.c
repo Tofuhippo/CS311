@@ -105,10 +105,10 @@ theta (in radians, counterclockwise), and then translates by the vector t. */
 void mat33Isometry(double theta, const double t[2], double isom[3][3]) {
 	double rotationMatrix[3][3] = {{cos(theta), -sin(theta), 0},
 	                               {sin(theta), cos(theta), 0},
-															   {0, 0, 1}};
+								   {0, 0, 1}};
 	double translation[3][3] = {{1, 0, t[0]},
-                              {0, 1, t[1]},
-														  {0, 0, 1}};
+                                {0, 1, t[1]},
+								{0, 0, 1}};
 	mat333Multiply(translation, rotationMatrix, isom);
 }
 
@@ -139,8 +139,8 @@ void mat33Add(double m[3][3], double n[3][3], double mPlusN[3][3]) {
 rotation matrix for the rotation about that axis through that angle. */
 void mat33AngleAxisRotation(double theta, const double axis[3],
 		double rot[3][3]){
-			double identity[3][3] = {{1,0,0}
-															 {0,1,0}
+			double identity[3][3] = {{1,0,0},
+															 {0,1,0},
 															 {0,0,1}};
 			double u[3][3] = {{0, -axis[2], axis[1]}
 												{axis[2], 0, -axis[0]}
@@ -191,14 +191,40 @@ void mat33BasisRotation(const double u[3], const double v[3],
 /* Multiplies m by n, placing the answer in mTimesN. The output CANNOT safely
 alias the input. */
 void mat444Multiply(const double m[4][4], const double n[4][4],
-		double mTimesN[4][4])
+		double mTimesN[4][4]) {
+			for (int colN = 0; colN < 4; colN++){
+				for (int rowM = 0; rowM < 4; rowM++){
+					mTimesN[rowM][colN] = m[rowM][0] * n[0][colN] +
+					                      m[rowM][1] * n[1][colN] +
+										  m[rowM][2] * n[2][colN] +
+										  m[rowM][3] * n[3][colN];
+				}
+			}
+		}
 
 /* Multiplies m by v, placing the answer in mTimesV. The output CANNOT safely
 alias the input. */
 void mat441Multiply(const double m[4][4], const double v[4],
-		double mTimesV[4])
+		double mTimesV[4]) {
+			for (int rowM = 0; rowM < 4; rowM++){
+				mTimesV[rowM] = m[rowM][0] * v[0] +
+								m[rowM][1] * v[1] +
+								m[rowM][2] * v[2] +
+								m[rowM][3] * v[3];
+			}
+		}
 
 /* Given a rotation and a translation, forms the 4x4 homogeneous matrix
 representing the rotation followed in time by the translation. */
 void mat44Isometry(const double rot[3][3], const double trans[3],
-		double isom[4][4])
+		double isom[4][4]) {
+			double rotationMatrix[4][4] = {{rot[0][0], rot[0][1], rot[0][2], 0},
+	                               		   {rot[1][0], rot[1][1], rot[1][2], 0},
+										   {rot[2][0], rot[2][1], rot[2][2], 0}
+										   {0, 0, 0, 1}};
+			double translation[4][4] = {{1, 0, 0, t[0]},
+                              			{0, 1, 0, t[1]},
+										{0, 0, 1, t[2]},
+										{0, 0, 0, 1}};
+			mat444Multiply(translation, rotationMatrix, isom);
+		}

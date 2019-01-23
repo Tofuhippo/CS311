@@ -78,7 +78,6 @@ colorPixel, this function should not access any variables other than its
 parameters and any local variables that it declares. */
 void transformVertex(int unifDim, const double unif[], int attrDim,
 		const double attr[], int varyDim, double vary[]) {
-
 			double xy[2] = {attr[mainATTRX], attr[mainATTRY]};
 			double xyChanged[2] = {attr[mainATTRX], attr[mainATTRY]};
 

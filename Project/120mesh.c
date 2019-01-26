@@ -661,9 +661,6 @@ void meshRender(const meshMesh *mesh, const shaShading *sha,
 					                   sha->varyDim, varyC);
 				// Render each triangle using the vertexes we retrieved and infomration
 				// from other structs we have been using.
-				printf("varyA: %f, %f\n", varyA[0], varyA[1]);
-				printf("varyB: %f, %f\n", varyB[0], varyB[1]);
-				printf("varyC: %f, %f\n", varyC[0], varyC[1]);
 				triRender(sha, unif, tex, varyA, varyB, varyC);
 			}
 }

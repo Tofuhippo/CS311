@@ -114,12 +114,11 @@ void mat33Isometry(double theta, const double t[2], double isom[3][3]) {
 
 /**** Below added in conversion from 100 to 120 ****/
 
-/* Given a matrix of any size, multiply all values by a coefficient.
+/* Given a 3 by 3 matrix, multiply all values by a coefficient.
 The output CAN safely alias the input. */
-void matCoefficient(double co, double dimCol, double dimRow, double m[][],
-	double mApplied[][]) {
-		for (int i = 0; i < dimRow; i++){
-			for (int j = 0; j < dimCol; i++){
+void matCoefficient(double co, double m[3][3], double mApplied[3][3]) {
+		for (int i = 0; i < 3; i++){
+			for (int j = 0; j < 3; j++){
 				mApplied[i][j] = co * m[i][j];
 			}
 		}
@@ -128,8 +127,8 @@ void matCoefficient(double co, double dimCol, double dimRow, double m[][],
 /* Given two 3x3 matrices, add their contents into another 3x3. The
 output CAN safely alias the input. */
 void mat33Add(double m[3][3], double n[3][3], double mPlusN[3][3]) {
-	for (int i = 0; i < dimRow; i++){
-		for (int j = 0; j < dimCol; i++){
+	for (int i = 0; i < 3; i++){
+		for (int j = 0; j < 3; j++){
 			mPlusN[i][j] = m[i][j] + n[i][j];
 		}
 	}
@@ -142,22 +141,20 @@ void mat33AngleAxisRotation(double theta, const double axis[3],
 			double identity[3][3] = {{1,0,0},
 															 {0,1,0},
 															 {0,0,1}};
-			double u[3][3] = {{0, -axis[2], axis[1]}
-												{axis[2], 0, -axis[0]}
+			double u[3][3] = {{0, -axis[2], axis[1]},
+												{axis[2], 0, -axis[0]},
 												{-axis[1], axis[0], 0}};
 			double uSqr[3][3];
 			mat333Multiply(u, u, uSqr);
-
 			double uCo[3][3], uSqrCo[3][3];
 			matCoefficient(sin(theta), u, uCo);
 			matCoefficient(1-cos(theta), uSqr, uSqrCo);
-
 			mat33Add(identity, uCo, rot);
 			mat33Add(uSqrCo, rot, rot);
 		}
 
-
-mat33FillColumns(const double m0[3], const double m1[3], const double m2[3],
+/* Given a 3 3D vectors, fills the columns of matrix m with vectors m0, m1, m2.*/
+void mat33FillColumns(const double m0[3], const double m1[3], const double m2[3],
 	double m[3][3]) {
 		for (int i = 0; i < 3; i++){
 			m[i][0] = m0[i];
@@ -166,7 +163,8 @@ mat33FillColumns(const double m0[3], const double m1[3], const double m2[3],
 		}
 	}
 
-mat33Transpose(const double m[3][3], double mT[3][3]) {
+/* Given a 3D matrix, puts transpose of matrix into mT. */
+void mat33Transpose(const double m[3][3], double mT[3][3]) {
 	for (int i = 0; i < 3; i++){
 		for (int j = 0; j < 3; j++){
 			mT[i][j] = m[j][i];
@@ -185,7 +183,7 @@ void mat33BasisRotation(const double u[3], const double v[3],
 			double r[3][3], s[3][3], rT[3][3];
 			mat33FillColumns(u, v, w, r);
 			mat33FillColumns(a, b, c, s);
-			mat333multiply(s, rT, rot);
+			mat333Multiply(s, rT, rot);
 		}
 
 /* Multiplies m by n, placing the answer in mTimesN. The output CANNOT safely
@@ -196,8 +194,8 @@ void mat444Multiply(const double m[4][4], const double n[4][4],
 				for (int rowM = 0; rowM < 4; rowM++){
 					mTimesN[rowM][colN] = m[rowM][0] * n[0][colN] +
 					                      m[rowM][1] * n[1][colN] +
-										  m[rowM][2] * n[2][colN] +
-										  m[rowM][3] * n[3][colN];
+										            m[rowM][2] * n[2][colN] +
+										            m[rowM][3] * n[3][colN];
 				}
 			}
 		}
@@ -208,9 +206,9 @@ void mat441Multiply(const double m[4][4], const double v[4],
 		double mTimesV[4]) {
 			for (int rowM = 0; rowM < 4; rowM++){
 				mTimesV[rowM] = m[rowM][0] * v[0] +
-								m[rowM][1] * v[1] +
-								m[rowM][2] * v[2] +
-								m[rowM][3] * v[3];
+								        m[rowM][1] * v[1] +
+								        m[rowM][2] * v[2] +
+								        m[rowM][3] * v[3];
 			}
 		}
 
@@ -219,12 +217,12 @@ representing the rotation followed in time by the translation. */
 void mat44Isometry(const double rot[3][3], const double trans[3],
 		double isom[4][4]) {
 			double rotationMatrix[4][4] = {{rot[0][0], rot[0][1], rot[0][2], 0},
-	                               		   {rot[1][0], rot[1][1], rot[1][2], 0},
-										   {rot[2][0], rot[2][1], rot[2][2], 0}
-										   {0, 0, 0, 1}};
-			double translation[4][4] = {{1, 0, 0, t[0]},
-                              			{0, 1, 0, t[1]},
-										{0, 0, 1, t[2]},
-										{0, 0, 0, 1}};
+	                               		 {rot[1][0], rot[1][1], rot[1][2], 0},
+										                 {rot[2][0], rot[2][1], rot[2][2], 0},
+										                 {0, 0, 0, 1}};
+			double translation[4][4] = {{1, 0, 0, trans[0]},
+                              		{0, 1, 0, trans[1]},
+										              {0, 0, 1, trans[2]},
+										              {0, 0, 0, 1}};
 			mat444Multiply(translation, rotationMatrix, isom);
 		}

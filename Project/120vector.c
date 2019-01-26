@@ -106,13 +106,13 @@ double vecLength(int dim, const double v[]) {
 places a normalized (length-1) version of v into unit. The output can safely
 alias the input. */
 double vecUnit(int dim, const double v[], double unit[]) {
-	double vecLength = vecLength(dim, v);
-	if (vecLength != 0){
+	double vectorLength = vecLength(dim, v);
+	if (vectorLength != 0){
 		for (int i = 0; i < dim; i++){
-			unit[i] = v[i] / vecLength;
+			unit[i] = v[i] / vectorLength;
 		}
 	}
-	return vecLength;
+	return vectorLength;
 }
 
 /* Computes the cross product of v and w, and places it into vCrossW. The

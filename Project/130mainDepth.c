@@ -1,6 +1,6 @@
 /*
 Dawson d'Almeida and Justin T. Washington
-January 25 2018
+January 27 2018
 CS311 with Josh Davis
 
 Main abstracted file that defines the colorPixel and transformVertex functions
@@ -35,8 +35,9 @@ and demonstrates the rendering of a 3D mesh.
 #define mainATTRP 7
 #define mainVARYX 0
 #define mainVARYY 1
-#define mainVARYS 2
-#define mainVARYT 3
+#define mainVARYZ 2
+#define mainVARYS 3
+#define mainVARYT 4
 #define mainUNIFR 0
 #define mainUNIFG 1
 #define mainUNIFB 2
@@ -47,12 +48,13 @@ and demonstrates the rendering of a 3D mesh.
 
 void colorPixel(int unifDim, const double unif[], int texNum,
 		const texTexture *tex[], int varyDim, const double vary[],
-		double rgb[3]) {
+		double rgbd[4]) {
 	double sample[tex[0]->texelDim];
 	texSample(tex[0], vary[mainVARYS], vary[mainVARYT], sample);
-	rgb[0] = sample[mainTEXR] * unif[mainUNIFR];
-	rgb[1] = sample[mainTEXG] * unif[mainUNIFG];
-	rgb[2] = sample[mainTEXB] * unif[mainUNIFB];
+	rgbd[0] = sample[mainTEXR] * unif[mainUNIFR];
+	rgbd[1] = sample[mainTEXG] * unif[mainUNIFG];
+	rgbd[2] = sample[mainTEXB] * unif[mainUNIFB];
+	rgbd[3] = - vary[mainVARYZ];
 }
 
 void transformVertex(int unifDim, const double unif[], int attrDim,
@@ -127,7 +129,7 @@ int main(void) {
 		texSetTopBottom(&texture, texREPEAT);
 		sha.unifDim = 3 + 16;
 		sha.attrDim = 3 + 2 + 3;
-		sha.varyDim = 2 + 2;
+		sha.varyDim = 3 + 2;
 		sha.colorPixel = colorPixel;
 		sha.transformVertex = transformVertex;
 		sha.texNum = 1;

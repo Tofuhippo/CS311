@@ -14,7 +14,7 @@ Renders triangle to screen.
 /* Helper for triRender, which assumes that the points are in counterclockwise
 	 order and a is the leftmost point, possibly tied with b or c, then renders
 	 the traingle to the screen. */
-void triRenderALeft(const shaShading *sha, const double unif[],
+void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[],
 	 const texTexture *tex[], const double a[], const double b[],
 	 const double c[]) {
 
@@ -36,7 +36,7 @@ void triRenderALeft(const shaShading *sha, const double unif[],
 
 			// rgb[3] is the array passed into colorPixel for calculating the
 			// color that we use in pixSetRGB.
-			double rgb[3];
+			double rgbd[4];
 			// vary holds x0, x1, and other interpolated values after vertex
 			// transformation (ex. s and t; r, g, and b; etc...)
 			double vary[sha->varyDim];
@@ -147,19 +147,19 @@ void triRenderALeft(const shaShading *sha, const double unif[],
 /* Assumes that the 0th and 1th elements of a, b, c are the 'x' and 'y'
 	 coordinates of the vertices, respectively (used in rasterization, and to
 	 interpolate the other elements of a, b, c). */
-	 void triRender(const shaShading *sha, const double unif[],
-	 		const texTexture *tex[], const double a[], const double b[],
-	 		const double c[]) {
+void triRender(const shaShading *sha, depthBuffer *buf, const double unif[],
+		const texTexture *tex[], const double a[], const double b[],
+		const double c[]) {
 			/* If a is leftmost, possibly tied with b or c. */
 			if (a[0] <= b[0] && a[0] <= c[0]) {
-				triRenderALeft(sha, unif, tex, a, b, c);
+				triRenderALeft(sha, buf, unif, tex, a, b, c);
 			}
 			/* If b is leftmost, possibly tied with c. */
 			else if (b[0] <= a[0] && b[0] <= c[0]) {
-				triRenderALeft(sha, unif, tex, b, c, a);
+				triRenderALeft(sha, buf, unif, tex, b, c, a);
 			}
 			/* If c is leftmost. */
 			else {
-				triRenderALeft(sha, unif, tex, c, a, b);
+				triRenderALeft(sha, buf, unif, tex, c, a, b);
 			}
 }

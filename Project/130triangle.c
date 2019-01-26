@@ -34,7 +34,7 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 				return;
 			}
 
-			// rgb[3] is the array passed into colorPixel for calculating the
+			// rgbd[4] is the array passed into colorPixel for calculating the
 			// color that we use in pixSetRGB.
 			double rgbd[4];
 			// vary holds x0, x1, and other interpolated values after vertex
@@ -64,9 +64,18 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 								vary[i] = a[i] + pAndQ[0] * (b[i] - a[i]) +
 																	 pAndQ[1] * (c[i] - a[i]);
 							}
+							// right now, we perform calculations for pixel color while lookin
+							// for depth, which is inefficient but oh well
 							sha->colorPixel(sha->unifDim, unif, sha->texNum,
-								              tex, sha->varyDim, vary, rgb);
-							pixSetRGB(x0, x1, rgb[0], rgb[1], rgb[2]);
+								              tex, sha->varyDim, vary, rgbd);
+							// now depth is in rgbd[3], so check depth of current pixel (x0, x1)
+							double curPixDepth = depthGetDepth(buf, x0, x1);
+							if (curPixDepth > rgbd[3]){
+								// draw pixel and update depth if pixel is closer
+								pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
+								depthSetDepth(buf, x0, x1, rgbd[3]);
+							}
+							// otherwise do nothing
 					}
 				}
 				/* Draw right half of triangle or whole triangle if a[0] == c[0]. */
@@ -87,8 +96,8 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 																	 pAndQ[1] * (c[i] - a[i]);
 							}
 							sha->colorPixel(sha->unifDim, unif, sha->texNum,
-								              tex, sha->varyDim, vary, rgb);
-							pixSetRGB(x0, x1, rgb[0], rgb[1], rgb[2]);
+								              tex, sha->varyDim, vary, rgbd);
+							pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
 					}
 				}
 			}
@@ -115,8 +124,8 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 																	 pAndQ[1] * (c[i] - a[i]);
 							}
 							sha->colorPixel(sha->unifDim, unif, sha->texNum,
-								              tex, sha->varyDim, vary, rgb);
-							pixSetRGB(x0, x1, rgb[0], rgb[1], rgb[2]);
+								              tex, sha->varyDim, vary, rgbd);
+							pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
 					}
 				}
 				/* Draw right half of triangle, bisected by b[0]. */
@@ -137,8 +146,8 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 																	 pAndQ[1] * (c[i] - a[i]);
 							}
 							sha->colorPixel(sha->unifDim, unif, sha->texNum,
-								              tex, sha->varyDim, vary, rgb);
-							pixSetRGB(x0, x1, rgb[0], rgb[1], rgb[2]);
+								              tex, sha->varyDim, vary, rgbd);
+							pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
 					}
 				}
 			}

@@ -21,9 +21,10 @@ and demonstrates the rendering of a 3D mesh.
 #include "120vector.c"
 #include "120matrix.c"
 #include "040texture.c"
-#include "090shading.c"
-#include "120triangle.c"
-#include "120mesh.c"
+#include "130shading.c"
+#include "130depth.c"
+#include "130triangle.c"
+#include "130mesh.c"
 
 #define mainATTRX 0
 #define mainATTRY 1
@@ -65,11 +66,21 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 	vary[mainVARYT] = attr[mainATTRT];
 }
 
+/* Initialize all structs for holding datas */
 shaShading sha;
+shaShading sha2;
+
 texTexture texture;
 const texTexture *textures[1] = {&texture};
 const texTexture **tex = textures;
+
 meshMesh mesh;
+meshMesh mesh2;
+
+depthBuffer buf;
+int width = 512;
+int height = 512;
+
 double unif[3 + 16] = {1.0, 1.0, 1.0,
 	1.0, 0.0, 0.0, 0.0,
 	0.0, 1.0, 0.0, 0.0,
@@ -80,8 +91,13 @@ double rotationAxis[3];
 double translationVector[3] = {256.0, 256.0, 256.0};
 
 void draw(void) {
+	// clear the screen each time for animation redraw
 	pixClearRGB(0.0, 0.0, 0.0);
-	meshRender(&mesh, &sha, unif, tex);
+	// set depths of all pixels to be 1 BILLION SURPRISE TOYS
+	depthClearDepths(&buf, 1000000000);
+	// renders shape(s) for each frame
+	meshRender(&mesh, &buf, &sha, unif, tex);
+	meshRender(&mesh2, &buf, &sha, unif, tex);
 }
 
 void handleKeyUp(int key, int shiftIsDown, int controlIsDown,
@@ -110,13 +126,16 @@ void handleTimeStep(double oldTime, double newTime) {
 }
 
 int main(void) {
-	if (pixInitialize(512, 512, "Pixel Graphics") != 0)
+	if (pixInitialize(width, height, "Pixel Graphics") != 0)
 		return 1;
-	else if (texInitializeFile(&texture, "nathan_mannes.jpg") != 0)
+	else if (depthInitialize(&buf, width, height) != 0)
 		return 2;
-	else if (meshInitializeBox(&mesh, -128.0, 128.0, -64.0, 64.0, -32.0, 32.0) != 0)
-	//else if (meshInitializeSphere(&mesh, 64.0, 16, 32) != 0)
+	else if (texInitializeFile(&texture, "nathan_mannes.jpg") != 0)
 		return 3;
+	else if (meshInitializeBox(&mesh, -128.0, 128.0, -64.0, 64.0, -32.0, 32.0) != 0)
+		return 4;
+	else if (meshInitializeSphere(&mesh2, 77.0, 16, 32) != 0)
+		return 6;
 	else {
 		{
 			meshMesh meshB;
@@ -139,6 +158,8 @@ int main(void) {
 		pixRun();
 		meshDestroy(&mesh);
 		texDestroy(&texture);
+		depthDestroy(&buf);
+		meshDestroy(&mesh2);
 		return 0;
 	}
 }

@@ -1,6 +1,6 @@
 /*
 Dawson d'Almeida and Justin T. Washington
-January 25 2018
+January 27 2018
 CS311 with Josh Davis
 
 Renders triangle to screen.
@@ -95,9 +95,18 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 								vary[i] = a[i] + pAndQ[0] * (b[i] - a[i]) +
 																	 pAndQ[1] * (c[i] - a[i]);
 							}
+							// right now, we perform calculations for pixel color while lookin
+							// for depth, which is inefficient but oh well
 							sha->colorPixel(sha->unifDim, unif, sha->texNum,
 								              tex, sha->varyDim, vary, rgbd);
-							pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
+							// now depth is in rgbd[3], so check depth of current pixel (x0, x1)
+							double curPixDepth = depthGetDepth(buf, x0, x1);
+							if (curPixDepth > rgbd[3]){
+								// draw pixel and update depth if pixel is closer
+								pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
+								depthSetDepth(buf, x0, x1, rgbd[3]);
+							}
+							// otherwise do nothing
 					}
 				}
 			}
@@ -123,9 +132,18 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 								vary[i] = a[i] + pAndQ[0] * (b[i] - a[i]) +
 																	 pAndQ[1] * (c[i] - a[i]);
 							}
+							// right now, we perform calculations for pixel color while lookin
+							// for depth, which is inefficient but oh well
 							sha->colorPixel(sha->unifDim, unif, sha->texNum,
 								              tex, sha->varyDim, vary, rgbd);
-							pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
+							// now depth is in rgbd[3], so check depth of current pixel (x0, x1)
+							double curPixDepth = depthGetDepth(buf, x0, x1);
+							if (curPixDepth > rgbd[3]){
+								// draw pixel and update depth if pixel is closer
+								pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
+								depthSetDepth(buf, x0, x1, rgbd[3]);
+							}
+							// otherwise do nothing
 					}
 				}
 				/* Draw right half of triangle, bisected by b[0]. */
@@ -145,9 +163,18 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 								vary[i] = a[i] + pAndQ[0] * (b[i] - a[i]) +
 																	 pAndQ[1] * (c[i] - a[i]);
 							}
+							// right now, we perform calculations for pixel color while lookin
+							// for depth, which is inefficient but oh well
 							sha->colorPixel(sha->unifDim, unif, sha->texNum,
 								              tex, sha->varyDim, vary, rgbd);
-							pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
+							// now depth is in rgbd[3], so check depth of current pixel (x0, x1)
+							double curPixDepth = depthGetDepth(buf, x0, x1);
+							if (curPixDepth > rgbd[3]){
+								// draw pixel and update depth if pixel is closer
+								pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
+								depthSetDepth(buf, x0, x1, rgbd[3]);
+							}
+							// otherwise do nothing
 					}
 				}
 			}

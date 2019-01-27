@@ -50,3 +50,9 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Mac Metadata Files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*

@@ -70,7 +70,7 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 								              tex, sha->varyDim, vary, rgbd);
 							// now depth is in rgbd[3], so check depth of current pixel (x0, x1)
 							double curPixDepth = depthGetDepth(buf, x0, x1);
-							if (curPixDepth > rgbd[3]){
+							if (0<=x0 && x0<512 && 0<=x1 && x1<512 && curPixDepth > rgbd[3]){
 								// draw pixel and update depth if pixel is closer
 								pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
 								depthSetDepth(buf, x0, x1, rgbd[3]);
@@ -101,7 +101,7 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 								              tex, sha->varyDim, vary, rgbd);
 							// now depth is in rgbd[3], so check depth of current pixel (x0, x1)
 							double curPixDepth = depthGetDepth(buf, x0, x1);
-							if (curPixDepth > rgbd[3]){
+							if (0<=x0 && x0<512 && 0<=x1 && x1<512 && curPixDepth > rgbd[3]){
 								// draw pixel and update depth if pixel is closer
 								pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
 								depthSetDepth(buf, x0, x1, rgbd[3]);
@@ -138,7 +138,7 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 								              tex, sha->varyDim, vary, rgbd);
 							// now depth is in rgbd[3], so check depth of current pixel (x0, x1)
 							double curPixDepth = depthGetDepth(buf, x0, x1);
-							if (curPixDepth > rgbd[3]){
+							if (0<=x0 && x0<512 && 0<=x1 && x1<512 && curPixDepth > rgbd[3]){
 								// draw pixel and update depth if pixel is closer
 								pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
 								depthSetDepth(buf, x0, x1, rgbd[3]);
@@ -169,7 +169,7 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 								              tex, sha->varyDim, vary, rgbd);
 							// now depth is in rgbd[3], so check depth of current pixel (x0, x1)
 							double curPixDepth = depthGetDepth(buf, x0, x1);
-							if (curPixDepth > rgbd[3]){
+							if (0<=x0 && x0<512 && 0<=x1 && x1<512 && curPixDepth > rgbd[3]){
 								// draw pixel and update depth if pixel is closer
 								pixSetRGB(x0, x1, rgbd[0], rgbd[1], rgbd[2]);
 								depthSetDepth(buf, x0, x1, rgbd[3]);

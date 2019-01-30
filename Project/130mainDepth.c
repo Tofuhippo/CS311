@@ -62,8 +62,10 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 		const double attr[], int varyDim, double vary[]) {
 	double attrHomog[4] = {attr[0], attr[1], attr[2], 1.0};
 	mat441Multiply((double(*)[4])(&unif[mainUNIFMODELING]), attrHomog, vary);
-	vary[mainVARYS] = attr[mainATTRS];
-	vary[mainVARYT] = attr[mainATTRT];
+	if (attrDim >= 4){ //make sure that there are S and T to move
+		vary[mainVARYS] = attr[mainATTRS];
+		vary[mainVARYT] = attr[mainATTRT];
+	}
 }
 
 /* Initialize all structs for holding datas */

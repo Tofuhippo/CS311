@@ -238,9 +238,9 @@ clarify, in math notation it computes M^T v. The output CANNOT safely alias the
 input. */
 void mat331TransposeMultiply(const double m[3][3], const double v[3],
 		double mTTimesV[3]) {
-			mTTimesV[0] = (m[0][0] * v[0] + m[1][0] * v[1] + m[2][0] * v[2]);
-			mTTimesV[1] = (m[0][1] * v[0] + m[1][1] * v[1] + m[2][1] * v[2]);
-			mTTimesV[2] = (m[0][2] * v[0] + m[1][2] * v[1] + m[2][2] * v[2]);
+			for (int i = 0; i < 3; i ++){
+				mTTimesV[i] = (m[0][i] * v[0] + m[1][i] * v[1] + m[2][i] * v[2]);
+			}
 		}
 
 /* Sets its argument to the 4x4 zero matrix (which consists entirely of 0s). */
@@ -250,4 +250,18 @@ void mat44Zero(double m[4][4]) {
 			m[i][j] = 0;
 		}
 	}
+}
+
+
+/* Builds a 4x4 matrix for a viewport with lower left (0, 0) and upper right
+(width, height). This matrix maps a projected viewing volume
+[-1, 1] x [-1, 1] x [-1, 1] to screen [0, w] x [0, h] x [0, 1] (each interval
+in that order). */
+void mat44Viewport(double width, double height, double view[4][4]) {
+	return;
+}
+
+/* Inverse to mat44Viewport. */
+void mat44InverseViewport(double width, double height, double view[4][4]) {
+	return;
 }

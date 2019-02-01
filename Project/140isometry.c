@@ -45,8 +45,7 @@ void isoUntransformPoint(isoIsometry *iso, const double isoP[3], double p[3]) {
 	vecSubtract(3, isoP, iso->translation, isoPWithoutTranslation);
 	//second undo the rotation
 	//because the rotation matrix is orthogonal, R^T = R^-1
-	double inverseRotation[3][3];
-	mat331TransposeMultiply(iso->rotation, isoP, p);
+	mat331TransposeMultiply(iso->rotation, isoPWithoutTranslation, p);
 }
 
 /* Applies the rotation to a vector. The output CANNOT safely alias the input.
@@ -73,6 +72,17 @@ matrix. */
 void isoGetInverseHomogeneous(const isoIsometry *iso, double homogInv[4][4]) {
 	double rotTranspose[3][3];
 	mat33Transpose(iso->rotation, rotTranspose);
+	// double rotHomog[4][4];
+	// for (int i = 0; i < 3; i++){
+	// 	for (int j = 0; j < 3; j++){
+	// 		rotHomog[i][j] = rotTranspose[i][j];
+	// 	}
+	// }
+	// for (int x = 0; x < 3; x++){
+	// 	rotHomog[3][x] = 0;
+	// 	rotHomog[x][3] = 0;
+	// }
+	// rotHomog[3][3] = 1;
 	double rotHomog[4][4] = {{rotTranspose[0][0], rotTranspose[0][1], rotTranspose[0][2], 0},
 													 {rotTranspose[1][0], rotTranspose[1][1], rotTranspose[1][2], 0},
 													 {rotTranspose[2][0], rotTranspose[2][1], rotTranspose[2][2], 0},

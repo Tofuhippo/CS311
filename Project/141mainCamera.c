@@ -1,15 +1,8 @@
-/*
-Dawson d'Almeida and Justin T. Washington
-February 1 2018
-CS311 with Josh Davis
-
-Main abstracted file that defines the colorPixel and transformVertex functions
-and demonstrates the rendering of a 3D mesh.
-*/
+/* Quinn Mayville */
 
 
 /* On macOS, compile with...
-    clang 140mainCamera.c 000pixel.o -lglfw -framework OpenGL
+    clang 141mainCamera.c 000pixel.o -lglfw -framework OpenGL
 */
 
 #include <stdio.h>
@@ -20,13 +13,13 @@ and demonstrates the rendering of a 3D mesh.
 #include "000pixel.h"
 #include "120vector.c"
 #include "140matrix.c"
-#include "140isometry.c"
-#include "140camera.c"
 #include "040texture.c"
-#include "130shading.c"
 #include "130depth.c"
+#include "130shading.c"
 #include "130triangle.c"
 #include "130mesh.c"
+#include "140isometry.c"
+#include "140camera.c"
 
 #define mainATTRX 0
 #define mainATTRY 1
@@ -45,11 +38,10 @@ and demonstrates the rendering of a 3D mesh.
 #define mainUNIFG 1
 #define mainUNIFB 2
 #define mainUNIFMODELING 3
+#define mainUNIFCAMERA 19
 #define mainTEXR 0
 #define mainTEXG 1
 #define mainTEXB 2
-#define mainUNIFCAMERA 19
-
 
 void colorPixel(int unifDim, const double unif[], int texNum,
 		const texTexture *tex[], int varyDim, const double vary[],
@@ -59,7 +51,7 @@ void colorPixel(int unifDim, const double unif[], int texNum,
 	rgbd[0] = sample[mainTEXR] * unif[mainUNIFR];
 	rgbd[1] = sample[mainTEXG] * unif[mainUNIFG];
 	rgbd[2] = sample[mainTEXB] * unif[mainUNIFB];
-	rgbd[3] = - vary[mainVARYZ];
+	rgbd[3] = -vary[mainVARYZ];
 }
 
 void transformVertex(int unifDim, const double unif[], int attrDim,
@@ -68,57 +60,41 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 	double worldHomog[4];
 	mat441Multiply((double(*)[4])(&unif[mainUNIFMODELING]), attrHomog, worldHomog);
 	mat441Multiply((double(*)[4])(&unif[mainUNIFCAMERA]), worldHomog, vary);
-	if (attrDim >= 4){ //make sure that there are S and T to move
-		vary[mainVARYS] = attr[mainATTRS];
-		vary[mainVARYT] = attr[mainATTRT];
-	}
+	vary[mainVARYS] = attr[mainATTRS];
+	vary[mainVARYT] = attr[mainATTRT];
 }
 
-/* Initialize all structs for holding datas */
 camCamera cam;
-double cameraRho = 100;
-double cameraPhi = 3.14/2;
-double cameraTheta = 0;
-isoIsometry iso;
-double target[3] = {256.0, 256.0, 256.0};
-
 shaShading sha;
-shaShading sha2;
-
 texTexture texture;
+depthBuffer buf;
 const texTexture *textures[1] = {&texture};
 const texTexture **tex = textures;
-
 meshMesh mesh;
-meshMesh mesh2;
+meshMesh mesh1;
+double unif[3 + 16 + 16] = {
+	1.0, 1.0, 1.0,
 
-depthBuffer buf;
-int width = 512;
-int height = 512;
+	1.0, 0.0, 0.0, 0.0,
+	0.0, 1.0, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	0.0, 0.0, 0.0, 1.0,
 
-double unif[3 + 16 + 16] = {1.0, 1.0, 1.0,
-
-														1.0, 0.0, 0.0, 0.0,
-														0.0, 1.0, 0.0, 0.0,
-														0.0, 0.0, 1.0, 0.0,
-														0.0, 0.0, 0.0, 1.0,
-
-														1.0, 0.0, 0.0, 0.0,
-														0.0, 1.0, 0.0, 0.0,
-														0.0, 0.0, 1.0, 0.0,
-														0.0, 0.0, 0.0, 1.0};
+	1.0, 0.0, 0.0, 0.0,
+	0.0, 1.0, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	0.0, 0.0, 0.0, 1.0,
+};
 double rotationAngle = 0.0;
 double rotationAxis[3];
-double translationVector[3] = {256, 256, 256};
+double translationVector[3] = {256.0, 256.0, 256.0};
+double cameraAngle = 0.0;
 
 void draw(void) {
-	// clear the screen each time for animation redraw
 	pixClearRGB(0.0, 0.0, 0.0);
-	// set depths of all pixels to be 1 BILLION SURPRISE TOYS
 	depthClearDepths(&buf, 1000000000);
-	// renders shape(s) for each frame
+	meshRender(&mesh1, &buf, &sha, unif, tex);
 	meshRender(&mesh, &buf, &sha, unif, tex);
-	meshRender(&mesh2, &buf, &sha, unif, tex);
 }
 
 void handleKeyUp(int key, int shiftIsDown, int controlIsDown,
@@ -136,50 +112,41 @@ void handleTimeStep(double oldTime, double newTime) {
 	if (floor(newTime) - floor(oldTime) >= 1.0)
 		printf("handleTimeStep: %f frames/sec\n", 1.0 / (newTime - oldTime));
 
-	//FIRST WORKING TEST
+	// Change unif color
 	unif[mainUNIFR] = sin(newTime);
 	unif[mainUNIFG] = cos(oldTime);
 
-
-	// Mesh Rotation
+	// Rotate mesh
 	rotationAngle += (newTime - oldTime);
-	double rot[3][3];
-	double isom[4][4];
+	double rot[3][3], isom[4][4];
 	vec3Set(1.0 / sqrt(3.0), 1.0 / sqrt(3.0), 1.0 / sqrt(3.0), rotationAxis);
 	mat33AngleAxisRotation(rotationAngle, rotationAxis, rot);
-	mat44Isometry(rot, translationVector,isom);
+	mat44Isometry(rot, translationVector, isom);
 	vecCopy(16, (double *)isom, &unif[mainUNIFMODELING]);
 
-	// Camera Rotation
-	// double invCamIsom[4][4];
-	// cameraTheta += (newTime - oldTime);
-	// camLookAt(&cam, target, cameraRho, cameraPhi, cameraTheta);
-	// isoGetInverseHomogeneous(&(cam.isometry), invCamIsom);
-	// printf("Before:\n");
-	// for (int i = 19; i < 35; i ++){
-	// 	printf("%f, ", unif[i]);
-	// }
-	// printf("\n");
-	// vecCopy(16, (double *)invCamIsom, &unif[mainUNIFCAMERA]);
-	// printf("After:\n");
-	// for (int i = 19; i < 35; i ++){
-	// 	printf("%f, ", unif[i]);
-	// }
-	// printf("\n");
+	// Rotate camera
+	double target[3] = {256, 256, 256};
+	cameraAngle += 5 * (newTime - oldTime);
+	camLookAt(&cam, target, 100, 3.14/2, cameraAngle);
+	double invCamIsom[4][4];
+	isoGetInverseHomogeneous(&(cam.isometry), invCamIsom);
+	vecCopy(16, (double *)invCamIsom, &unif[mainUNIFCAMERA]);
+
+
 	draw();
 }
 
 int main(void) {
-	if (pixInitialize(width, height, "Pixel Graphics") != 0)
+	if (pixInitialize(512, 512, "Pixel Graphics") != 0)
 		return 1;
-	else if (depthInitialize(&buf, width, height) != 0)
-		return 2;
 	else if (texInitializeFile(&texture, "nathan_mannes.jpg") != 0)
-		return 3;
+		return 2;
 	else if (meshInitializeBox(&mesh, -128.0, 128.0, -64.0, 64.0, -32.0, 32.0) != 0)
+		return 3;
+	else if (meshInitializeSphere(&mesh1, 64.0, 16, 32) != 0)
 		return 4;
-	else if (meshInitializeSphere(&mesh2, 77.0, 16, 32) != 0)
-		return 6;
+	else if (depthInitialize(&buf, 512, 512) != 0)
+		return 5;
 	else {
 		{
 			meshMesh meshB;
@@ -196,14 +163,15 @@ int main(void) {
 		sha.colorPixel = colorPixel;
 		sha.transformVertex = transformVertex;
 		sha.texNum = 1;
+
 		draw();
 		pixSetKeyUpHandler(handleKeyUp);
 		pixSetTimeStepHandler(handleTimeStep);
 		pixRun();
 		meshDestroy(&mesh);
+		meshDestroy(&mesh1);
 		texDestroy(&texture);
 		depthDestroy(&buf);
-		meshDestroy(&mesh2);
 		return 0;
 	}
 }

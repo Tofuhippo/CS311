@@ -93,7 +93,7 @@ plane the box is the same rectangle R. Keep in mind that 0 > near > far. Maps
 the viewing volume to [-1, 1] x [-1, 1] x [-1, 1], with far going to 1 and near
 going to -1. */
 void camGetOrthographic(const camCamera *cam, double proj[4][4]) {
-	
+
 }
 
 /* Inverse to the matrix produced by camGetOrthographic. */

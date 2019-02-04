@@ -74,7 +74,10 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 	}
 }
 
-/* Initialize all structs for holding datas */
+/***************************************************/
+/* Initialize all global structs for holding datas */
+/***************************************************/
+
 camCamera cam;
 double cameraRho = 100;
 double cameraPhi = 3.14/2;
@@ -96,20 +99,25 @@ depthBuffer buf;
 int width = 512;
 int height = 512;
 
-double unif[3 + 16 + 16] = {1.0, 1.0, 1.0,
+double unif[3 + 16 + 16] = {1.0, 1.0, 1.0,		 //mainUNIF[R,G,B]
 
-														1.0, 0.0, 0.0, 0.0,
+														1.0, 0.0, 0.0, 0.0,//mainUNIFMODELING
 														0.0, 1.0, 0.0, 0.0,
 														0.0, 0.0, 1.0, 0.0,
 														0.0, 0.0, 0.0, 1.0,
 
-														1.0, 0.0, 0.0, 0.0,
+														1.0, 0.0, 0.0, 0.0,//mainUNIFCAMERA
 														0.0, 1.0, 0.0, 0.0,
 														0.0, 0.0, 1.0, 0.0,
 														0.0, 0.0, 0.0, 1.0};
+// Angle and Orthographic axis basis for calculating rotation matrix
 double rotationAngle = 0.0;
 double rotationAxis[3];
+
+// Where to translate the drawn mesh after each rotation is completed
 double translationVector[3] = {256, 256, 256};
+
+
 
 void draw(void) {
 	// clear the screen each time for animation redraw
@@ -118,7 +126,7 @@ void draw(void) {
 	depthClearDepths(&buf, 1000000000);
 	// renders shape(s) for each frame
 	meshRender(&mesh, &buf, &sha, unif, tex);
-	meshRender(&mesh2, &buf, &sha, unif, tex);
+	//meshRender(&mesh2, &buf, &sha, unif, tex);
 }
 
 void handleKeyUp(int key, int shiftIsDown, int controlIsDown,
@@ -136,23 +144,23 @@ void handleTimeStep(double oldTime, double newTime) {
 	if (floor(newTime) - floor(oldTime) >= 1.0)
 		printf("handleTimeStep: %f frames/sec\n", 1.0 / (newTime - oldTime));
 
-	//FIRST WORKING TEST
+	/* FIRST WORKING TEST */
 	unif[mainUNIFR] = sin(newTime);
 	unif[mainUNIFG] = cos(oldTime);
 
 
-	// Mesh Rotation
-	rotationAngle += (newTime - oldTime);
-	double rot[3][3];
-	double isom[4][4];
-	vec3Set(1.0 / sqrt(3.0), 1.0 / sqrt(3.0), 1.0 / sqrt(3.0), rotationAxis);
-	mat33AngleAxisRotation(rotationAngle, rotationAxis, rot);
-	mat44Isometry(rot, translationVector,isom);
-	vecCopy(16, (double *)isom, &unif[mainUNIFMODELING]);
+	/* Mesh Rotation (from before the time of the Camera) */
+	// rotationAngle += (newTime - oldTime);
+	// double rot[3][3];
+	// double isom[4][4];
+	// vec3Set(1.0 / sqrt(3.0), 1.0 / sqrt(3.0), 1.0 / sqrt(3.0), rotationAxis);
+	// mat33AngleAxisRotation(rotationAngle, rotationAxis, rot);
+	// mat44Isometry(rot, translationVector, isom);
+	// vecCopy(16, (double *)isom, &unif[mainUNIFMODELING]);
 
-	// Camera Rotation
+	/* Camera Rotation */
 	// double invCamIsom[4][4];
-	// cameraTheta += (newTime - oldTime);
+	// cameraTheta = newTime;
 	// camLookAt(&cam, target, cameraRho, cameraPhi, cameraTheta);
 	// isoGetInverseHomogeneous(&(cam.isometry), invCamIsom);
 	// printf("Before:\n");
@@ -166,7 +174,9 @@ void handleTimeStep(double oldTime, double newTime) {
 	// 	printf("%f, ", unif[i]);
 	// }
 	// printf("\n");
-	draw();
+
+
+	//draw();
 }
 
 int main(void) {
@@ -181,12 +191,12 @@ int main(void) {
 	else if (meshInitializeSphere(&mesh2, 77.0, 16, 32) != 0)
 		return 6;
 	else {
-		{
-			meshMesh meshB;
-			printf("meshSaveFile %d\n", meshSaveFile(&mesh, "first.txt"));
-			printf("meshInitializeFile %d\n", meshInitializeFile(&meshB, "first.txt"));
-			printf("meshSaveFile %d\n", meshSaveFile(&meshB, "second.txt"));
-		}
+		// {
+		// 	meshMesh meshB;
+		// 	printf("meshSaveFile %d\n", meshSaveFile(&mesh, "first.txt"));
+		// 	printf("meshInitializeFile %d\n", meshInitializeFile(&meshB, "first.txt"));
+		// 	printf("meshSaveFile %d\n", meshSaveFile(&meshB, "second.txt"));
+		// }
 		texSetFiltering(&texture, texNEAREST);
 		texSetLeftRight(&texture, texREPEAT);
 		texSetTopBottom(&texture, texREPEAT);
@@ -196,14 +206,14 @@ int main(void) {
 		sha.colorPixel = colorPixel;
 		sha.transformVertex = transformVertex;
 		sha.texNum = 1;
-		draw();
+		draw(); //initial draw, done @ (0,0)
 		pixSetKeyUpHandler(handleKeyUp);
 		pixSetTimeStepHandler(handleTimeStep);
 		pixRun();
 		meshDestroy(&mesh);
 		texDestroy(&texture);
 		depthDestroy(&buf);
-		meshDestroy(&mesh2);
+		//meshDestroy(&mesh2);
 		return 0;
 	}
 }

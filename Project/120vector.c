@@ -127,7 +127,7 @@ void vec3Cross(const double v[3], const double w[3], double vCrossW[3]) {
 radius. 0 <= phi <= pi is the co-latitude. -pi <= theta <= pi is the longitude
 or azimuth. */
 void vec3Spherical(double rho, double phi, double theta, double v[3]) {
-	v[0] = phi * sin(rho) * cos(theta);
-	v[1] = phi * sin(rho) * sin(theta);
-	v[2] = phi * cos(rho);
+	v[0] = rho * sin(phi) * cos(theta);
+	v[1] = rho * sin(phi) * sin(theta);
+	v[2] = rho * cos(phi);
 }

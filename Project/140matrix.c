@@ -184,6 +184,7 @@ void mat33BasisRotation(const double u[3], const double v[3],
 			vec3Cross(a, b, c);
 			double r[3][3], s[3][3], rT[3][3];
 			mat33FillColumns(u, v, w, r);
+			mat33Transpose(r, rT);
 			mat33FillColumns(a, b, c, s);
 			mat333Multiply(s, rT, rot);
 		}
@@ -258,10 +259,19 @@ void mat44Zero(double m[4][4]) {
 [-1, 1] x [-1, 1] x [-1, 1] to screen [0, w] x [0, h] x [0, 1] (each interval
 in that order). */
 void mat44Viewport(double width, double height, double view[4][4]) {
-	return;
+	mat44Zero(view);
+	view[0][0] = view[0][3] = width / 2.0;
+	view[1][1] = view[1][3] = height / 2.0;
+	view[2][2] = view[2][3] = 1.0 / 2.0;
+	view[3][3] = 1.0;
 }
 
 /* Inverse to mat44Viewport. */
 void mat44InverseViewport(double width, double height, double view[4][4]) {
-	return;
+	mat44Zero(view);
+	view[0][0] = 2.0 / width;
+	view[0][3] = view[1][3] = view[2][3] = -1;
+	view[1][1] = 2.0 / height;
+	view[2][2] = 2.0;
+	view[3][3] = 1.0;
 }

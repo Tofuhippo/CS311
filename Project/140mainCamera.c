@@ -74,16 +74,16 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 	}
 }
 
-/***************************************************/
-/* Initialize all global structs for holding datas */
-/***************************************************/
+/**************************************************/
+/* Initialize all global structs for holding data */
+/**************************************************/
 
 camCamera cam;
 double cameraRho = 100;
 double cameraPhi = 3.14/2;
 double cameraTheta = 0;
 isoIsometry iso;
-double target[3] = {256.0, 256.0, 256.0};
+double target[3] = {0, 0, 0};
 
 shaShading sha;
 shaShading sha2;
@@ -115,7 +115,7 @@ double rotationAngle = 0.0;
 double rotationAxis[3];
 
 // Where to translate the drawn mesh after each rotation is completed
-double translationVector[3] = {256, 256, 256};
+double translationVector[3] = {0, 0, 0};
 
 // For discrete timestep TESTING
 int c = 2; //desired number of runs
@@ -128,7 +128,7 @@ void draw(void) {
 	depthClearDepths(&buf, 1000000000);
 	// renders shape(s) for each frame
 	meshRender(&mesh, &buf, &sha, unif, tex);
-	//meshRender(&mesh2, &buf, &sha, unif, tex);
+	meshRender(&mesh2, &buf, &sha, unif, tex);
 }
 
 void handleKeyUp(int key, int shiftIsDown, int controlIsDown,
@@ -152,42 +152,43 @@ void handleTimeStep(double oldTime, double newTime) {
 
 
 	/* Mesh Rotation (from before the time of the Camera) */
-	// rotationAngle += (newTime - oldTime);
-	// double rot[3][3];
-	// double isom[4][4];
-	// vec3Set(1.0 / sqrt(3.0), 1.0 / sqrt(3.0), 1.0 / sqrt(3.0), rotationAxis);
-	// mat33AngleAxisRotation(rotationAngle, rotationAxis, rot);
-	// mat44Isometry(rot, translationVector, isom);
-	// vecCopy(16, (double *)isom, &unif[mainUNIFMODELING]);
+	rotationAngle += (newTime - oldTime);
+	double rot[3][3];
+	double isom[4][4];
+	vec3Set(1.0 / sqrt(3.0), 1.0 / sqrt(3.0), 1.0 / sqrt(3.0), rotationAxis);
+	mat33AngleAxisRotation(rotationAngle, rotationAxis, rot);
+	mat44Isometry(rot, translationVector, isom);
+	vecCopy(16, (double *)isom, &unif[mainUNIFMODELING]);
 
 	/* Camera Rotation */
 	double invCamIsom[4][4];
 	cameraTheta = newTime;
 	camLookAt(&cam, target, cameraRho, cameraPhi, cameraTheta);
 	isoGetInverseHomogeneous(&(cam.isometry), invCamIsom);
-	
-	printf("invCamIsom\n", );
-	for (int i = 0; i < 16; i = i+4){
-		printf("%f, %f, %f, %f\n", invCamIsom[i], invCamIsom[i+1], invCamIsom[i+2], invCamIsom[i+3]);
-	}
 
-
-	printf("Unif before\n");
-	for (int i = 19; i < 35; i = i+4){
-		printf("%f, %f, %f, %f\n", unif[i], unif[i+1], unif[i+2], unif[i+3]);
-	}
-
+	// printf("invCamIsom\n");
+	// for (int i = 0; i < 4; i = i+1){
+	// 	printf("%f, %f, %f, %f\n", invCamIsom[i][0], invCamIsom[i][1], invCamIsom[i][2], invCamIsom[i][3]);
+	// }
+	//
+	//
+	// printf("\nUnif before\n");
+	// for (int i = 19; i < 35; i = i+4){
+	// 	printf("%f, %f, %f, %f\n", unif[i], unif[i+1], unif[i+2], unif[i+3]);
+	// }
+	//
 	vecCopy(16, (double *)invCamIsom, &unif[mainUNIFCAMERA]);
-
+	//
 	printf("Unif After\n");
 	for (int i = 19; i < 35; i = i+4){
 		printf("%f, %f, %f, %f\n", unif[i], unif[i+1], unif[i+2], unif[i+3]);
 	}
-	printf("\n");
+	// printf("\n");
 	//draw();
-	runs++;
-	if(runs==c)
-		exit(0);
+	// runs++;
+	// if(runs==c)
+	// 	exit(0);
+	draw();
 }
 
 int main(void) {

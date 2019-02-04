@@ -40,21 +40,40 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 			// vary holds x0, x1, and other interpolated values after vertex
 			// transformation (ex. s and t; r, g, and b; etc...)
 			double vary[sha->varyDim];
-			double pAndQ[2], xMinusA[2];;
+			double pAndQ[2], xMinusA[2];
+			// Values used for Optimization
+			int botX0, botX1, topX0, topX1;
 
 			if (c[0] <= b[0]){ // c[0] is between a[0] and b[0] or equal to a[0] or b[0]
 				double bottomSlope = 0; // degenerate value (a[0] == b[0] == c[0])
 				if (b[0] != a[0]){
 					bottomSlope = (b[1]-a[1])/(b[0]-a[0]);
 				}
+				// Optimization of for loop: loop over values only in screen space
+				botX0 = (int)ceil(a[0]);
+				topX0 = (int)floor(c[0]);
+				if (botX0 < 0){
+					botX0 = 0;
+				}
+				if (topX0 > 512){
+					topX0 = 512;
+				}
 				/* Draw left half of triangle or whole triangle if b[0] == c[0]. */
-				for (int x0 = (int)ceil(a[0]); x0 <= (int)floor(c[0]); x0++){
+				for (int x0 = botX0; x0 <= topX0; x0++){
 					double topLeftSlope = 0;
 					if (c[0] != a[0]){
 						topLeftSlope = (c[1]-a[1])/(c[0]-a[0]);
 					}
-					for (int x1 = (int)ceil(x0*bottomSlope - a[0]*bottomSlope + a[1]);
-						x1 <= (int)floor(x0*topLeftSlope - c[0]*topLeftSlope + c[1]); x1++) {
+					// Optimization of for loop: loop over values only in screen space
+					botX1 = (int)ceil(x0*bottomSlope - a[0]*bottomSlope + a[1]);
+					topX1 = (int)floor(x0*topLeftSlope - c[0]*topLeftSlope + c[1]);
+					if (botX1 < 0){
+						botX1 = 0;
+					}
+					if (topX1 > 512){
+						topX1 = 512;
+					}
+					for (int x1 = botX1; x1 <= topX1; x1++) {
 							double x[2] = {x0, x1};
 							vecSubtract(2, x, aPos, xMinusA);
 							mat221Multiply(mInv, xMinusA, pAndQ);
@@ -78,14 +97,32 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 							// otherwise do nothing
 					}
 				}
+				// Optimization of for loop: loop over values only in screen space
+				botX0 = (int)ceil(c[0]);
+				topX0 = (int)floor(b[0]);
+				if (botX0 < 0){
+					botX0 = 0;
+				}
+				if (topX0 > 512){
+					topX0 = 512;
+				}
+				// Optimization of for loop: loop over values only in screen space
 				/* Draw right half of triangle or whole triangle if a[0] == c[0]. */
-				for (int x0 = (int)floor(c[0])+1; x0 <= (int)floor(b[0]); x0++){
+				for (int x0 = botX0; x0 <= topX0; x0++){
 					double topRightSlope = 0;
 					if (b[0] != c[0]){
 						topRightSlope = (b[1]-c[1])/(b[0]-c[0]);
 					}
-					for (int x1 = (int)ceil(x0*bottomSlope - a[0]*bottomSlope + a[1]);
-						x1 <= (int)floor(x0*topRightSlope - c[0]*topRightSlope + c[1]); x1++) {
+					// Optimization of for loop: loop over values only in screen space
+					botX1 = (int)ceil(x0*bottomSlope - a[0]*bottomSlope + a[1]);
+					topX1 = (int)floor(x0*topRightSlope - c[0]*topRightSlope + c[1]);
+					if (botX1 < 0){
+						botX1 = 0;
+					}
+					if (topX1 > 512){
+						topX1 = 512;
+					}
+					for (int x1 = botX1; x1 <= topX1; x1++) {
 							double x[2] = {x0, x1};
 							vecSubtract(2, x, aPos, xMinusA);
 							mat221Multiply(mInv, xMinusA, pAndQ);
@@ -115,14 +152,31 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 				if (c[0] != a[0]){
 					topSlope = (c[1]-a[1])/(c[0]-a[0]);
 				}
+				// Optimization of for loop: loop over values only in screen space
+				botX0 = (int)ceil(a[0]);
+				topX0 = (int)floor(b[0]);
+				if (botX0 < 0){
+					botX0 = 0;
+				}
+				if (topX0 > 512){
+					topX0 = 512;
+				}
 				/* Draw left half of triangle, bisected by b[0]. */
-				for (int x0 = (int)ceil(a[0]); x0 <= (int)floor(b[0]); x0++){
+				for (int x0 = botX0; x0 <= topX0; x0++){
 					double bottomLeftSlope = 0;
 					if (b[0] != a[0]){
 						bottomLeftSlope = (b[1]-a[1])/(b[0]-a[0]);
 					}
-					for (int x1 = (int)ceil(x0*bottomLeftSlope - a[0]*bottomLeftSlope + a[1]);
-						x1 <= (int)floor(x0*topSlope - c[0]*topSlope + c[1]); x1++) {
+					// Optimization of for loop: loop over values only in screen space
+					botX1 = (int)ceil(x0*bottomLeftSlope - a[0]*bottomLeftSlope + a[1]);
+					topX1 = (int)floor(x0*topSlope - c[0]*topSlope + c[1]);
+					if (botX1 < 0){
+						botX1 = 0;
+					}
+					if (topX1 > 512){
+						topX1 = 512;
+					}
+					for (int x1 = botX1; x1 <= topX1; x1++){
 							double x[2] = {x0, x1};
 							vecSubtract(2, x, aPos, xMinusA);
 							mat221Multiply(mInv, xMinusA, pAndQ);
@@ -146,14 +200,31 @@ void triRenderALeft(const shaShading *sha, depthBuffer *buf, const double unif[]
 							// otherwise do nothing
 					}
 				}
+				// Optimization of for loop: loop over values only in screen space
+				botX0 = (int)floor(b[0])+1;
+				topX0 = (int)floor(c[0]);
+				if (botX0 < 0){
+					botX0 = 0;
+				}
+				if (topX0 > 512){
+					topX0 = 512;
+				}
 				/* Draw right half of triangle, bisected by b[0]. */
-				for (int x0 = (int)floor(b[0])+1; x0 <= (int)floor(c[0]); x0++){
+				for (int x0 = botX0; x0 <= topX0; x0++){
 					double bottomRightSlope = 0;
 					if (c[0] != b[0]){
 						bottomRightSlope = (c[1]-b[1])/(c[0]-b[0]);
 					}
-					for (int x1 = (int)ceil(x0*bottomRightSlope - b[0]*bottomRightSlope + b[1]);
-						x1 <= (int)floor(x0*topSlope - a[0]*topSlope + a[1]); x1++) {
+					// Optimization of for loop: loop over values only in screen space
+					botX1 = (int)ceil(x0*bottomRightSlope - b[0]*bottomRightSlope + b[1]);
+					topX1 = (int)floor(x0*topSlope - a[0]*topSlope + a[1]);
+					if (botX1 < 0){
+						botX1 = 0;
+					}
+					if (topX1 > 512){
+						topX1 = 512;
+					}
+					for (int x1 = botX1; x1 <= topX1; x1++){
 							double x[2] = {x0, x1};
 							vecSubtract(2, x, aPos, xMinusA);
 							mat221Multiply(mInv, xMinusA, pAndQ);

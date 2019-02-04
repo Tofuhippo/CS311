@@ -72,24 +72,38 @@ matrix. */
 void isoGetInverseHomogeneous(const isoIsometry *iso, double homogInv[4][4]) {
 	double rotTranspose[3][3];
 	mat33Transpose(iso->rotation, rotTranspose);
-	// double rotHomog[4][4];
-	// for (int i = 0; i < 3; i++){
-	// 	for (int j = 0; j < 3; j++){
-	// 		rotHomog[i][j] = rotTranspose[i][j];
-	// 	}
-	// }
-	// for (int x = 0; x < 3; x++){
-	// 	rotHomog[3][x] = 0;
-	// 	rotHomog[x][3] = 0;
-	// }
-	// rotHomog[3][3] = 1;
-	double rotHomog[4][4] = {{rotTranspose[0][0], rotTranspose[0][1], rotTranspose[0][2], 0},
-													 {rotTranspose[1][0], rotTranspose[1][1], rotTranspose[1][2], 0},
-													 {rotTranspose[2][0], rotTranspose[2][1], rotTranspose[2][2], 0},
-													 {0, 0, 0, 1}};
-	double transHomog[4][4] = {{1, 0, 0, -(iso->translation[0])},
-							  						 {0, 1, 0, -(iso->translation[1])},
-							  					 	 {0, 0, 1, -(iso->translation[2])},
-							  					 	 {0, 0, 0, 1}};
-	mat444Multiply(rotHomog, transHomog, homogInv);
+	homogInv[0][0] = rotTranspose[0][0];
+	homogInv[0][1] = rotTranspose[0][1];
+	homogInv[0][2] = rotTranspose[0][2];
+	homogInv[0][3] = -(rotTranspose[0][0]*iso->translation[0]) +
+	                 -(rotTranspose[0][1]*iso->translation[1]) +
+									 -(rotTranspose[0][2]*iso->translation[2]);
+
+	homogInv[1][0] = rotTranspose[1][0];
+	homogInv[1][1] = rotTranspose[1][1];
+	homogInv[1][2] = rotTranspose[1][2];
+	homogInv[1][3] = -(rotTranspose[1][0]*iso->translation[0]) +
+	                 -(rotTranspose[1][1]*iso->translation[1]) +
+									 -(rotTranspose[1][2]*iso->translation[2]);
+
+	homogInv[2][0] = rotTranspose[2][0];
+	homogInv[2][1] = rotTranspose[2][1];
+	homogInv[2][2] = rotTranspose[2][2];
+	homogInv[2][3] = -(rotTranspose[2][0]*iso->translation[0]) +
+	                 -(rotTranspose[2][1]*iso->translation[1]) +
+									 -(rotTranspose[2][2]*iso->translation[2]);
+
+	homogInv[3][0] = 0;
+	homogInv[3][1] = 0;
+	homogInv[3][2] = 0;
+	homogInv[3][3] = 1;
+	// double rotHomog[4][4] = {{rotTranspose[0][0], rotTranspose[0][1], rotTranspose[0][2], 0},
+	// 												 {rotTranspose[1][0], rotTranspose[1][1], rotTranspose[1][2], 0},
+	// 												 {rotTranspose[2][0], rotTranspose[2][1], rotTranspose[2][2], 0},
+	// 												 {0, 0, 0, 1}};
+	// double transHomog[4][4] = {{1, 0, 0, -(iso->translation[0])},
+	// 						  						 {0, 1, 0, -(iso->translation[1])},
+	// 						  					 	 {0, 0, 1, -(iso->translation[2])},
+	// 						  					 	 {0, 0, 0, 1}};
+	// mat444Multiply(rotHomog, transHomog, homogInv);
 }

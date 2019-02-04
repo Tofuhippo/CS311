@@ -99,14 +99,14 @@ depthBuffer buf;
 int width = 512;
 int height = 512;
 
-double unif[3 + 16 + 16] = {1.0, 1.0, 1.0,		 //mainUNIF[R,G,B]
+double unif[3 + 16 + 16] = {1.0, 1.0, 1.0,		 //mainUNIF[R,G,B] 0-2
 
-														1.0, 0.0, 0.0, 0.0,//mainUNIFMODELING
+														1.0, 0.0, 0.0, 0.0,//mainUNIFMODELING 3-18
 														0.0, 1.0, 0.0, 0.0,
 														0.0, 0.0, 1.0, 0.0,
 														0.0, 0.0, 0.0, 1.0,
 
-														1.0, 0.0, 0.0, 0.0,//mainUNIFCAMERA
+														1.0, 0.0, 0.0, 0.0,//mainUNIFCAMERA 19-35
 														0.0, 1.0, 0.0, 0.0,
 														0.0, 0.0, 1.0, 0.0,
 														0.0, 0.0, 0.0, 1.0};
@@ -117,7 +117,9 @@ double rotationAxis[3];
 // Where to translate the drawn mesh after each rotation is completed
 double translationVector[3] = {256, 256, 256};
 
-
+// For discrete timestep TESTING
+int c = 2; //desired number of runs
+int runs = 0; //counts the runs DONT CHANGE
 
 void draw(void) {
 	// clear the screen each time for animation redraw
@@ -159,24 +161,33 @@ void handleTimeStep(double oldTime, double newTime) {
 	// vecCopy(16, (double *)isom, &unif[mainUNIFMODELING]);
 
 	/* Camera Rotation */
-	// double invCamIsom[4][4];
-	// cameraTheta = newTime;
-	// camLookAt(&cam, target, cameraRho, cameraPhi, cameraTheta);
-	// isoGetInverseHomogeneous(&(cam.isometry), invCamIsom);
-	// printf("Before:\n");
-	// for (int i = 19; i < 35; i ++){
-	// 	printf("%f, ", unif[i]);
-	// }
-	// printf("\n");
-	// vecCopy(16, (double *)invCamIsom, &unif[mainUNIFCAMERA]);
-	// printf("After:\n");
-	// for (int i = 19; i < 35; i ++){
-	// 	printf("%f, ", unif[i]);
-	// }
-	// printf("\n");
+	double invCamIsom[4][4];
+	cameraTheta = newTime;
+	camLookAt(&cam, target, cameraRho, cameraPhi, cameraTheta);
+	isoGetInverseHomogeneous(&(cam.isometry), invCamIsom);
+	
+	printf("invCamIsom\n", );
+	for (int i = 0; i < 16; i = i+4){
+		printf("%f, %f, %f, %f\n", invCamIsom[i], invCamIsom[i+1], invCamIsom[i+2], invCamIsom[i+3]);
+	}
 
 
+	printf("Unif before\n");
+	for (int i = 19; i < 35; i = i+4){
+		printf("%f, %f, %f, %f\n", unif[i], unif[i+1], unif[i+2], unif[i+3]);
+	}
+
+	vecCopy(16, (double *)invCamIsom, &unif[mainUNIFCAMERA]);
+
+	printf("Unif After\n");
+	for (int i = 19; i < 35; i = i+4){
+		printf("%f, %f, %f, %f\n", unif[i], unif[i+1], unif[i+2], unif[i+3]);
+	}
+	printf("\n");
 	//draw();
+	runs++;
+	if(runs==c)
+		exit(0);
 }
 
 int main(void) {

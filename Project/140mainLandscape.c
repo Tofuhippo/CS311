@@ -1,4 +1,11 @@
+/*
+Dawson d'Almeida and Justin T. Washington
+February 5 2018
+CS311 with Josh Davis
 
+Main abstracted file that defines the colorPixel and transformVertex functions
+and demonstrates the rendering of a landscape.
+*/
 
 
 /* On macOS, compile with...
@@ -157,8 +164,9 @@ void handleKeyAny(int key, int shiftIsDown, int controlIsDown,
 		cameraTarget[2] += 0.5;
 	else if (key == GLFW_KEY_J)
 		unifWater[mainUNIFMODELING] -= 0.1;
-	else if (key == GLFW_KEY_U)
-		unifWater[mainUNIFMODELING] += 0.1;
+	else if (key == GLFW_KEY_U){
+		//unifRock[mainUNIFMODELING] += 0.1;
+		unifWater[mainUNIFMODELING] += 0.1;}
 	camSetFrustum(&cam, M_PI / 6.0, cameraRho, 10.0, mainSCREENSIZE,
 		mainSCREENSIZE);
 	camLookAt(&cam, cameraTarget, cameraRho, cameraPhi, cameraTheta);

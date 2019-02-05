@@ -117,10 +117,6 @@ double rotationAxis[3];
 // Where to translate the drawn mesh after each rotation is completed
 double translationVector[3] = {0, 0, 0};
 
-// For discrete timestep TESTING
-int c = 2; //desired number of runs
-int runs = 0; //counts the runs DONT CHANGE
-
 void draw(void) {
 	// clear the screen each time for animation redraw
 	pixClearRGB(0.0, 0.0, 0.0);
@@ -165,29 +161,7 @@ void handleTimeStep(double oldTime, double newTime) {
 	cameraTheta = newTime;
 	camLookAt(&cam, target, cameraRho, cameraPhi, cameraTheta);
 	isoGetInverseHomogeneous(&(cam.isometry), invCamIsom);
-
-	// printf("invCamIsom\n");
-	// for (int i = 0; i < 4; i = i+1){
-	// 	printf("%f, %f, %f, %f\n", invCamIsom[i][0], invCamIsom[i][1], invCamIsom[i][2], invCamIsom[i][3]);
-	// }
-	//
-	//
-	// printf("\nUnif before\n");
-	// for (int i = 19; i < 35; i = i+4){
-	// 	printf("%f, %f, %f, %f\n", unif[i], unif[i+1], unif[i+2], unif[i+3]);
-	// }
-	//
 	vecCopy(16, (double *)invCamIsom, &unif[mainUNIFCAMERA]);
-	//
-	printf("Unif After\n");
-	for (int i = 19; i < 35; i = i+4){
-		printf("%f, %f, %f, %f\n", unif[i], unif[i+1], unif[i+2], unif[i+3]);
-	}
-	// printf("\n");
-	//draw();
-	// runs++;
-	// if(runs==c)
-	// 	exit(0);
 	draw();
 }
 
@@ -203,12 +177,12 @@ int main(void) {
 	else if (meshInitializeSphere(&mesh2, 77.0, 16, 32) != 0)
 		return 6;
 	else {
-		// {
-		// 	meshMesh meshB;
-		// 	printf("meshSaveFile %d\n", meshSaveFile(&mesh, "first.txt"));
-		// 	printf("meshInitializeFile %d\n", meshInitializeFile(&meshB, "first.txt"));
-		// 	printf("meshSaveFile %d\n", meshSaveFile(&meshB, "second.txt"));
-		// }
+		{
+			meshMesh meshB;
+			printf("meshSaveFile %d\n", meshSaveFile(&mesh, "first.txt"));
+			printf("meshInitializeFile %d\n", meshInitializeFile(&meshB, "first.txt"));
+			printf("meshSaveFile %d\n", meshSaveFile(&meshB, "second.txt"));
+		}
 		texSetFiltering(&texture, texNEAREST);
 		texSetLeftRight(&texture, texREPEAT);
 		texSetTopBottom(&texture, texREPEAT);
@@ -225,7 +199,7 @@ int main(void) {
 		meshDestroy(&mesh);
 		texDestroy(&texture);
 		depthDestroy(&buf);
-		//meshDestroy(&mesh2);
+		meshDestroy(&mesh2);
 		return 0;
 	}
 }

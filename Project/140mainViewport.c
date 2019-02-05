@@ -1,4 +1,11 @@
+/*
+Dawson d'Almeida and Justin T. Washington
+February 5 2018
+CS311 with Josh Davis
 
+Main abstracted file that defines the colorPixel and transformVertex functions
+and demonstrates the rendering of a two meshes using camera isometry.
+*/
 
 
 /* On macOS, compile with...

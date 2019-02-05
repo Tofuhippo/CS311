@@ -97,13 +97,4 @@ void isoGetInverseHomogeneous(const isoIsometry *iso, double homogInv[4][4]) {
 	homogInv[3][1] = 0;
 	homogInv[3][2] = 0;
 	homogInv[3][3] = 1;
-	// double rotHomog[4][4] = {{rotTranspose[0][0], rotTranspose[0][1], rotTranspose[0][2], 0},
-	// 												 {rotTranspose[1][0], rotTranspose[1][1], rotTranspose[1][2], 0},
-	// 												 {rotTranspose[2][0], rotTranspose[2][1], rotTranspose[2][2], 0},
-	// 												 {0, 0, 0, 1}};
-	// double transHomog[4][4] = {{1, 0, 0, -(iso->translation[0])},
-	// 						  						 {0, 1, 0, -(iso->translation[1])},
-	// 						  					 	 {0, 0, 1, -(iso->translation[2])},
-	// 						  					 	 {0, 0, 0, 1}};
-	// mat444Multiply(rotHomog, transHomog, homogInv);
 }

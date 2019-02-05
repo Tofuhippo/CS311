@@ -165,3 +165,48 @@ void camGetProjectionInverseIsometry(camCamera *cam, double homog[4][4]) {
 	isoGetInverseHomogeneous(&cam->isometry, camInv);
 	mat444Multiply(proj, camInv, homog);
 }
+
+/***************************************************/
+/**** Below added in conversion from 140 to 150 ****/
+/***************************************************/
+
+/* Builds a 4x4 matrix representing perspective projection. The viewing frustum
+is contained between the near and far planes, with 0 > near > far. On the near
+plane, the frustum is the rectangle R = [left, right] x [bottom, top]. On the
+far plane, the frustum is the rectangle (far / near) * R. Maps the viewing
+volume to [-1, 1] x [-1, 1] x [-1, 1], with far going to 1 and near going to
+-1. */
+void camGetPerspective(const camCamera *cam, double proj[4][4]) {
+  double left = cam->projection[camPROJL];
+	double right = cam->projection[camPROJR];
+	double bottom = cam->projection[camPROJB];
+	double top = cam->projection[camPROJT];
+	double far = cam->projection[camPROJF];
+	double near = cam->projection[camPROJN];
+	mat44Zero(proj);
+	proj[0][0] = (-2 * near) / (right - left);
+	proj[0][2] = (right + left) / (right - left);
+	proj[1][1] = (-2 * near) / (top - bottom);
+	proj[1][2] = (top + bottom) / (top - bottom);
+	proj[2][2] = (near + far) / (near - far);
+	proj[2][3] = (-2 * near * far) / (near - far);
+	proj[3][2] = - 1.0;
+}
+
+/* Inverse to the matrix produced by camGetPerspective. */
+void camGetInversePerspective(const camCamera *cam, double proj[4][4]) {
+  double left = cam->projection[camPROJL];
+	double right = cam->projection[camPROJR];
+	double bottom = cam->projection[camPROJB];
+	double top = cam->projection[camPROJT];
+	double far = cam->projection[camPROJF];
+	double near = cam->projection[camPROJN];
+	mat44Zero(proj);
+	proj[0][0] = (right - left) / (-2 * near);
+	proj[0][3] = (right + left) / (-2 * near);
+	proj[1][1] = (top - bottom) / (-2 * near);
+	proj[1][3] = (top + bottom) / (-2 * near);
+	proj[2][3] = - 1.0;
+	proj[3][2] = (near - far) / (-2 * near * far);
+	proj[3][3] = (near + far) / (-2 * near * far);
+}

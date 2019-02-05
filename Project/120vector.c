@@ -95,10 +95,7 @@ double vecDot(int dim, const double v[], const double w[]) {
 
 /* Returns the length of the vector v. */
 double vecLength(int dim, const double v[]) {
-	double squaredValues;
-	for (int i = 0; i < dim; i++){
-		squaredValues += pow(v[i], 2);
-	}
+	double squaredValues = vecDot(dim, v, v);
 	return sqrt(squaredValues);
 }
 

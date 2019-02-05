@@ -586,10 +586,12 @@ from horizontal by more than angle. Don't forget to call meshDestroy when
 finished. Warning: May contain extraneous vertices not used by any triangle. */
 int meshInitializeDissectedLandscape(meshMesh *mesh, const meshMesh *land,
 		double angle, int noMoreThan) {
+	//printf("In meshInitializeDissectedLandscape\n");fflush(stdout);
 	int error, i, j = 0, triNum = 0;
 	int *tri, *newTri;
 	double normal[3];
 	/* Count the triangles that are nearly horizontal. */
+	printf("Before for loop: Shoot iterate %i times\n", land->triNum);fflush(stdout);
 	for (i = 0; i < land->triNum; i += 1) {
 		tri = meshGetTrianglePointer(land, i);
 		meshTrueNormal(meshGetVertexPointer(land, tri[0]),
@@ -599,7 +601,9 @@ int meshInitializeDissectedLandscape(meshMesh *mesh, const meshMesh *land,
 				(!noMoreThan && normal[2] < cos(angle)))
 			triNum += 1;
 	}
+	//printf("Done with for loop\n");fflush(stdout);
 	error = meshInitialize(mesh, triNum, land->vertNum, 3 + 2 + 3);
+	printf("after meshInitialize\n");fflush(stdout);
 	if (error == 0) {
 		/* Copy all of the vertices. */
 		vecCopy(land->vertNum * (3 + 2 + 3), land->vert, mesh->vert);

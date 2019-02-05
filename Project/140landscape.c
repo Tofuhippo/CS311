@@ -1,4 +1,10 @@
+/*
+Dawson d'Almeida and Justin T. Washington
+February 5 2018
+CS311 with Josh Davis
 
+Written by Josh Davis for generating/handling landscapes for 140mainLandscape.c.
+*/
 
 
 /* This file contains functions for randomly generating landscapes. A landscape

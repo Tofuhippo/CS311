@@ -79,6 +79,11 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 	worldHom[2] += unif[mainUNIFMODELING];
 	vecCopy(4, worldHom, vary);
 	vary[mainVARYWORLDZ] = worldHom[2];
+
+	// MISSING STUFF OTHER THAN VEIWPORT
+	// 140 had V P C-1 in unif cam transformation
+	// refactor for perspective means remove viewport, still have P C-1
+	// pass V to meshrender seperately
 }
 
 /*** Globals ***/

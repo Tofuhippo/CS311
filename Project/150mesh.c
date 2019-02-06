@@ -695,7 +695,7 @@ void meshRender(const meshMesh *mesh, depthBuffer *buf,
 				tempVertexA = meshGetVertexPointer(mesh, tempTriangle[0]);
 				tempVertexB = meshGetVertexPointer(mesh, tempTriangle[1]);
 				tempVertexC = meshGetVertexPointer(mesh, tempTriangle[2]);
-				// Transform?
+				// Transform
 				double varyA[sha->varyDim], varyB[sha->varyDim], varyC[sha->varyDim];
 				sha->transformVertex(sha->unifDim, unif, sha->attrDim, tempVertexA,
 												     sha->varyDim, varyA);
@@ -710,29 +710,27 @@ void meshRender(const meshMesh *mesh, depthBuffer *buf,
 				double varyAHomog[sha->varyDim];
 				double varyBHomog[sha->varyDim];
 				double varyCHomog[sha->varyDim];
-				int drawA, drawB, drawC = 0; //reads as True in if{}
-
+				int drawA = 1, drawB = 1, drawC = 1; //reads as True in if{}
+				printf("initial %d,%d,%d\n", drawA, drawB, drawC);
 				// Check which vertices should be drawn (past near plane)
 				if (varyA[mainVARYW] <= 0 || varyA[mainVARYW] < -varyA[mainVARYZ]){
-					drawA = 1;
+					drawA = 0;
 				}
 				if (varyB[mainVARYW] <= 0 || varyB[mainVARYW] < -varyB[mainVARYZ]){
-					drawB = 1;
+					drawB = 0;
 				}
 				if (varyC[mainVARYW] <= 0 || varyC[mainVARYW] < -varyC[mainVARYZ]){
-					drawC = 1;
+					drawC = 0;
 				}
 
+				printf("pre %d,%d,%d\n", drawA, drawB, drawC);
 				// All three vertices should be drawn
-				printf("pre %d,%d,%d", drawA, drawB, drawC);
 				if (drawA && drawB && drawC){
 					printf("draw all\n");
 					viewportAndHomogenous(sha, varyA, varyB, varyC, viewport,
 						varyAHomog, varyBHomog, varyCHomog);
 					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
 				}
-				printf("post %d,%d,%d", drawA, drawB, drawC);
-				// ^^ THIS PRINT CAUSES EXPECTED EXPRESSION ERROR FOR THE ELSE OF NEXT IF
 				// Two of three vertices should be drawn
 				else if (drawA && drawB){
 					printf("drawA and drawB\n");
@@ -804,6 +802,6 @@ void meshRender(const meshMesh *mesh, depthBuffer *buf,
 					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
 				}
 				// Else: None of the vertices should be drawn
-				printf("nothing was drawn\n", );
+				//printf("nothing was drawn\n");
 			}
 }

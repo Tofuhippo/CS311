@@ -21,7 +21,7 @@ and demonstrates the rendering of a 3D mesh.
 #include "120vector.c"
 #include "140matrix.c"
 #include "140isometry.c"
-#include "140camera.c"
+#include "150camera.c"
 #include "040texture.c"
 #include "130shading.c"
 #include "130depth.c"

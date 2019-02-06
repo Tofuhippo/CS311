@@ -157,15 +157,6 @@ void camSetFrustum(camCamera *cam, double fovy, double focal, double ratio,
 	cam->projection[camPROJL] = -cam->projection[camPROJR];
 }
 
-/* Returns the homogeneous 4x4 product of the camera's projection and the
-camera's inverse isometry. */
-void camGetProjectionInverseIsometry(camCamera *cam, double homog[4][4]) {
-	double proj[4][4], camInv[4][4];
-	camGetOrthographic(cam, proj);
-	isoGetInverseHomogeneous(&cam->isometry, camInv);
-	mat444Multiply(proj, camInv, homog);
-}
-
 /***************************************************/
 /**** Below added in conversion from 140 to 150 ****/
 /***************************************************/
@@ -209,4 +200,23 @@ void camGetInversePerspective(const camCamera *cam, double proj[4][4]) {
 	proj[2][3] = - 1.0;
 	proj[3][2] = (near - far) / (-2 * near * far);
 	proj[3][3] = (near + far) / (-2 * near * far);
+}
+
+/****************************/
+/**** Below added in 140 ****/
+/****************************/
+
+
+/* Returns the homogeneous 4x4 product of the camera's projection and the
+camera's inverse isometry. */
+void camGetProjectionInverseIsometry(camCamera *cam, double homog[4][4]) {
+	double proj[4][4], camInv[4][4];
+	if (cam->projectionType == camPERSPECTIVE){
+		camGetPerspective(cam, proj);
+	}
+	else{
+		camGetOrthographic(cam, proj);
+	}
+	isoGetInverseHomogeneous(&cam->isometry, camInv);
+	mat444Multiply(proj, camInv, homog);
 }

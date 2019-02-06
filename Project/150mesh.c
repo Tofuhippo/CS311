@@ -18,6 +18,12 @@ struct meshMesh {
 	double *vert;					/* vertNum * attrDim doubles */
 };
 
+#define mainVARYX 0
+#define mainVARYY 1
+#define mainVARYZ 2
+#define mainVARYW 3
+#define mainVARYWORLDZ 4
+
 /* Initializes a mesh with enough memory to hold its triangles and vertices.
 Does not actually fill in those triangles or vertices with useful data. When
 you are finished with the mesh, you must call meshDestroy to deallocate its
@@ -661,8 +667,20 @@ void meshRender(const meshMesh *mesh, depthBuffer *buf, const shaShading *sha,
 					                   sha->varyDim, varyB);
 				sha->transformVertex(sha->unifDim, unif, sha->attrDim, tempVertexC,
 					                   sha->varyDim, varyC);
+
+				double varyAHomog[sha->varyDim];
+				double varyBHomog[sha->varyDim];
+				double varyCHomog[sha->varyDim];
+				for (int i = 0; i < (sha->varyDim - 1); i++){
+					varyAHomog[i] = varyA[i] / varyA[mainVARYW];
+					varyBHomog[i] = varyB[i] / varyB[mainVARYW];
+					varyCHomog[i] = varyC[i] / varyC[mainVARYW];
+				}
+				varyAHomog[mainVARYWORLDZ] = varyA[mainVARYWORLDZ];
+				varyBHomog[mainVARYWORLDZ] = varyB[mainVARYWORLDZ];
+				varyCHomog[mainVARYWORLDZ] = varyC[mainVARYWORLDZ];
 				// Render each triangle using the vertexes we retrieved and infomration
 				// from other structs we have been using.
-				triRender(sha, buf, unif, tex, varyA, varyB, varyC);
+				triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
 			}
 }

@@ -710,7 +710,7 @@ void meshRender(const meshMesh *mesh, depthBuffer *buf,
 				double varyAHomog[sha->varyDim];
 				double varyBHomog[sha->varyDim];
 				double varyCHomog[sha->varyDim];
-				int drawA, drawB, drawC = 0;
+				int drawA, drawB, drawC = 0; //reads as True in if{}
 
 				// Check which vertices should be drawn (past near plane)
 				if (varyA[mainVARYW] <= 0 || varyA[mainVARYW] < -varyA[mainVARYZ]){
@@ -724,28 +724,32 @@ void meshRender(const meshMesh *mesh, depthBuffer *buf,
 				}
 
 				// All three vertices should be drawn
+				printf("pre %d,%d,%d", drawA, drawB, drawC);
 				if (drawA && drawB && drawC){
+					printf("draw all\n");
 					viewportAndHomogenous(sha, varyA, varyB, varyC, viewport,
 						varyAHomog, varyBHomog, varyCHomog);
 					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
 				}
+				printf("post %d,%d,%d", drawA, drawB, drawC);
+				// ^^ THIS PRINT CAUSES EXPECTED EXPRESSION ERROR FOR THE ELSE OF NEXT IF
 				// Two of three vertices should be drawn
 				else if (drawA && drawB){
 					printf("drawA and drawB\n");
 					// Broken: memory leak we think. Should initialize in all draw but
 					// we end up in here. Figure it out later
-					viewportAndHomogenous(sha, varyA, varyB, varyC, viewport,
+					// viewportAndHomogenous(sha, varyA, varyB, varyC, viewport,
+					// 	varyAHomog, varyBHomog, varyCHomog);
+					// triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+					double newCB[sha->varyDim], newCA[sha->varyDim];
+					clipTriangle(sha->varyDim, varyC, varyB, newCB);
+					clipTriangle(sha->varyDim, varyC, varyA, newCA);
+					viewportAndHomogenous(sha, varyA, varyB, newCB, viewport,
 						varyAHomog, varyBHomog, varyCHomog);
 					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
-					// double newCB[sha->varyDim], newCA[sha->varyDim];
-					// clipTriangle(sha->varyDim, varyC, varyB, newCB);
-					// clipTriangle(sha->varyDim, varyC, varyA, newCA);
-					// viewportAndHomogenous(sha, varyA, varyB, newCB, viewport,
-					// 	varyAHomog, varyBHomog, varyCHomog);
-					// triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
-					// viewportAndHomogenous(sha, varyA, newCB, newCA, viewport,
-					// 	varyAHomog, varyBHomog, varyCHomog);
-					// triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+					viewportAndHomogenous(sha, varyA, newCB, newCA, viewport,
+						varyAHomog, varyBHomog, varyCHomog);
+					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
 				}
 				else if (drawA && drawC){
 					printf("drawA and drawC\n");
@@ -800,5 +804,6 @@ void meshRender(const meshMesh *mesh, depthBuffer *buf,
 					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
 				}
 				// Else: None of the vertices should be drawn
+				printf("nothing was drawn\n", );
 			}
 }

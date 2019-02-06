@@ -77,8 +77,7 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 	simpler than the usual matrix multiplication. */
 	vecCopy(4, attrHom, worldHom);
 	worldHom[2] += unif[mainUNIFMODELING];
-	mat441Multiply((double(*)[4])(&unif[mainUNIFCAMERA]), worldHom, varyHom);
-	vecCopy(4, varyHom, vary);
+	vecCopy(4, worldHom, vary);
 	vary[mainVARYWORLDZ] = worldHom[2];
 }
 
@@ -130,11 +129,14 @@ void render(void) {
 	pixClearRGB(0.0, 0.0, 0.0);
 	depthClearDepths(&buf, 1000000000.0);
 	vecCopy(16, (double *)viewProjInvIsom, &unifGrass[mainUNIFCAMERA]);
-	meshRender(&grass, &buf, &sha, unifGrass, NULL);
+	meshRender(&grass, &buf, (double(*)[4])(&unifGrass[mainUNIFCAMERA]),
+	           &sha, unifGrass, NULL);
 	vecCopy(16, (double *)viewProjInvIsom, &unifRock[mainUNIFCAMERA]);
-	meshRender(&rock, &buf, &sha, unifRock, NULL);
+	meshRender(&rock, &buf, (double(*)[4])(&unifRock[mainUNIFCAMERA]),
+	           &sha, unifRock, NULL);
 	vecCopy(16, (double *)viewProjInvIsom, &unifWater[mainUNIFCAMERA]);
-	meshRender(&water, &buf, &sha, unifWater, NULL);
+	meshRender(&water, &buf, (double(*)[4])(&unifWater[mainUNIFCAMERA]),
+	           &sha, unifWater, NULL);
 }
 
 void handleKeyAny(int key, int shiftIsDown, int controlIsDown,

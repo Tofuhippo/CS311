@@ -51,7 +51,7 @@ theta (as in vec3Spherical). Under normal use, where 0 < phi < pi, the camera's
 up-direction is world-up, or as close to it as possible. */
 void camLookFrom(camCamera *cam, const double position[3], double phi,
 		double theta) {
-	double negZ[3], y[3],  yStd[3] = {0.0, 1.0, 0.0};
+	double negZ[3], y[3], yStd[3] = {0.0, 1.0, 0.0};
 	double negZStd[3] = {0.0, 0.0, -1.0}, rot[3][3];
 	vec3Spherical(1.0, phi, theta, negZ);
 	vec3Spherical(1.0, M_PI / 2.0 - phi, theta + M_PI, y);

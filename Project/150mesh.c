@@ -636,10 +636,46 @@ int meshInitializeDissectedLandscape(meshMesh *mesh, const meshMesh *land,
 
 /*** Rendering ***/
 
+/* Clip a triangle at the near-plane and returns new vertices of clipped
+triangle(s). */
+void clipTriangle(const int dim, const double preNear[], const double postNear[],
+	double newVertex[]) {
+		double t = (preNear[mainVARYZ] + preNear[mainVARYW]) /
+		           ((preNear[mainVARYZ] + preNear[mainVARYW]) -
+							 	(postNear[mainVARYZ] + postNear[mainVARYW]));
+		for (int i = 0; i < dim; i++){
+			newVertex[i] = preNear[i] + t * (postNear[i] - preNear[i]);
+		}
+}
+
+/* Applies viewport transformation and homogenous division to a vertex. */
+void viewportAndHomogenous(const shaShading *sha, const double varyA[],
+	const double varyB[], const double varyC[], const double viewport[4][4],
+	double varyAHomog[], double varyBHomog[], double varyCHomog[]) {
+			// Perform viewport transformation
+			double varyAViewport[sha->varyDim];
+			double varyBViewport[sha->varyDim];
+			double varyCViewport[sha->varyDim];
+			mat441Multiply((double(*)[4])(viewport), varyA, varyAViewport);
+			mat441Multiply((double(*)[4])(viewport), varyB, varyBViewport);
+			mat441Multiply((double(*)[4])(viewport), varyC, varyCViewport);
+
+			// Perform homogeneous division
+			for (int i = 0; i < (sha->varyDim - 1); i++){
+				varyAHomog[i] = varyAViewport[i] / varyAViewport[mainVARYW];
+				varyBHomog[i] = varyBViewport[i] / varyBViewport[mainVARYW];
+				varyCHomog[i] = varyCViewport[i] / varyCViewport[mainVARYW];
+			}
+			varyAHomog[mainVARYWORLDZ] = varyA[mainVARYWORLDZ];
+			varyBHomog[mainVARYWORLDZ] = varyB[mainVARYWORLDZ];
+			varyCHomog[mainVARYWORLDZ] = varyC[mainVARYWORLDZ];
+}
+
 /* Renders the mesh. But if the mesh and the shading have differing values for
 attrDim, then prints an error message and does not render anything. */
-void meshRender(const meshMesh *mesh, depthBuffer *buf, const shaShading *sha,
-		const double unif[], const texTexture *tex[]) {
+void meshRender(const meshMesh *mesh, depthBuffer *buf,
+	const double viewport[4][4], const shaShading *sha,
+	const double unif[], const texTexture *tex[]) {
 			// Make sure that the mesh->attrDim and sha->attrDim are the same
 			if (mesh->attrDim != sha->attrDim){
 				printf("meshMesh and shaShading have differing values.\n");
@@ -668,19 +704,101 @@ void meshRender(const meshMesh *mesh, depthBuffer *buf, const shaShading *sha,
 				sha->transformVertex(sha->unifDim, unif, sha->attrDim, tempVertexC,
 					                   sha->varyDim, varyC);
 
+
+				// CLIP
+				// Initialize variables
 				double varyAHomog[sha->varyDim];
 				double varyBHomog[sha->varyDim];
 				double varyCHomog[sha->varyDim];
-				for (int i = 0; i < (sha->varyDim - 1); i++){
-					varyAHomog[i] = varyA[i] / varyA[mainVARYW];
-					varyBHomog[i] = varyB[i] / varyB[mainVARYW];
-					varyCHomog[i] = varyC[i] / varyC[mainVARYW];
+				int drawA, drawB, drawC = 0;
+
+				// Check which vertices should be drawn (past near plane)
+				if (varyA[mainVARYW] <= 0 || varyA[mainVARYW] < -varyA[mainVARYZ]){
+					drawA = 1;
 				}
-				varyAHomog[mainVARYWORLDZ] = varyA[mainVARYWORLDZ];
-				varyBHomog[mainVARYWORLDZ] = varyB[mainVARYWORLDZ];
-				varyCHomog[mainVARYWORLDZ] = varyC[mainVARYWORLDZ];
-				// Render each triangle using the vertexes we retrieved and infomration
-				// from other structs we have been using.
-				triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+				if (varyB[mainVARYW] <= 0 || varyB[mainVARYW] < -varyB[mainVARYZ]){
+					drawB = 1;
+				}
+				if (varyC[mainVARYW] <= 0 || varyC[mainVARYW] < -varyC[mainVARYZ]){
+					drawC = 1;
+				}
+
+				// All three vertices should be drawn
+				if (drawA && drawB && drawC){
+					viewportAndHomogenous(sha, varyA, varyB, varyC, viewport,
+						varyAHomog, varyBHomog, varyCHomog);
+					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+				}
+				// Two of three vertices should be drawn
+				else if (drawA && drawB){
+					printf("drawA and drawB\n");
+					// Broken: memory leak we think. Should initialize in all draw but
+					// we end up in here. Figure it out later
+					viewportAndHomogenous(sha, varyA, varyB, varyC, viewport,
+						varyAHomog, varyBHomog, varyCHomog);
+					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+					// double newCB[sha->varyDim], newCA[sha->varyDim];
+					// clipTriangle(sha->varyDim, varyC, varyB, newCB);
+					// clipTriangle(sha->varyDim, varyC, varyA, newCA);
+					// viewportAndHomogenous(sha, varyA, varyB, newCB, viewport,
+					// 	varyAHomog, varyBHomog, varyCHomog);
+					// triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+					// viewportAndHomogenous(sha, varyA, newCB, newCA, viewport,
+					// 	varyAHomog, varyBHomog, varyCHomog);
+					// triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+				}
+				else if (drawA && drawC){
+					printf("drawA and drawC\n");
+					double newBA[sha->varyDim], newBC[sha->varyDim];
+					clipTriangle(sha->varyDim, varyB, varyA, newBA);
+					clipTriangle(sha->varyDim, varyB, varyC, newBC);
+					viewportAndHomogenous(sha, varyC, varyA, newBA, viewport,
+						varyAHomog, varyBHomog, varyCHomog);
+					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+					viewportAndHomogenous(sha, varyC, newBA, newBC, viewport,
+						varyAHomog, varyBHomog, varyCHomog);
+					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+				}
+				else if (drawB && drawC){
+					printf("drawB and drawC\n");
+					double newAC[sha->varyDim], newAB[sha->varyDim];
+					clipTriangle(sha->varyDim, varyA, varyC, newAC);
+					clipTriangle(sha->varyDim, varyA, varyB, newAB);
+					viewportAndHomogenous(sha, varyB, varyC, newAC, viewport,
+						varyAHomog, varyBHomog, varyCHomog);
+					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+					viewportAndHomogenous(sha, varyB, newAC, newAB, viewport,
+						varyAHomog, varyBHomog, varyCHomog);
+					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+				}
+				// One of three vertices should be drawn
+				else if (drawA){
+					printf("drawA\n");
+					double newB[sha->varyDim], newC[sha->varyDim];
+					clipTriangle(sha->varyDim, varyB, varyA, newB);
+					clipTriangle(sha->varyDim, varyC, varyA, newC);
+					viewportAndHomogenous(sha, varyA, newB, newC, viewport,
+						varyAHomog, varyBHomog, varyCHomog);
+					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+				}
+				else if (drawB){
+					printf("drawB\n");
+					double newC[sha->varyDim], newA[sha->varyDim];
+					clipTriangle(sha->varyDim, varyC, varyB, newC);
+					clipTriangle(sha->varyDim, varyA, varyB, newA);
+					viewportAndHomogenous(sha, newA, varyB, newC, viewport,
+						varyAHomog, varyBHomog, varyCHomog);
+					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+				}
+				else if (drawC){
+					printf("drawC\n");
+					double newA[sha->varyDim], newB[sha->varyDim];
+					clipTriangle(sha->varyDim, varyA, varyC, newA);
+					clipTriangle(sha->varyDim, varyB, varyC, newB);
+					viewportAndHomogenous(sha, newA, newB, varyC, viewport,
+						varyAHomog, varyBHomog, varyCHomog);
+					triRender(sha, buf, unif, tex, varyAHomog, varyBHomog, varyCHomog);
+				}
+				// Else: None of the vertices should be drawn
 			}
 }

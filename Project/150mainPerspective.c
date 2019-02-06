@@ -59,31 +59,28 @@ and demonstrates the rendering of a landscape.
 /* Solid colors, tinted from dark (low saturation at low elevation) to light
 (high saturation at high elevation). */
 void colorPixel(int unifDim, const double unif[], int texNum,
-		const texTexture *tex[], int varyDim, const double vary[],
-		double rgbd[4]) {
-	double frac = (vary[mainVARYWORLDZ] - unif[mainUNIFMIN])
-		/ (unif[mainUNIFMAX] - unif[mainUNIFMIN]);
-	rgbd[0] = unif[mainUNIFR] * (frac + 1.0) / 2.0;
-	rgbd[1] = unif[mainUNIFG] * (frac + 1.0) / 2.0;
-	rgbd[2] = unif[mainUNIFB] * (frac + 1.0) / 2.0;
-	rgbd[3] = vary[mainVARYZ];
+	const texTexture *tex[], int varyDim, const double vary[],
+	double rgbd[4]) {
+			double frac = (vary[mainVARYWORLDZ] - unif[mainUNIFMIN])
+				/ (unif[mainUNIFMAX] - unif[mainUNIFMIN]);
+			rgbd[0] = unif[mainUNIFR] * (frac + 1.0) / 2.0;
+			rgbd[1] = unif[mainUNIFG] * (frac + 1.0) / 2.0;
+			rgbd[2] = unif[mainUNIFB] * (frac + 1.0) / 2.0;
+			rgbd[3] = vary[mainVARYZ];
 }
 
 void transformVertex(int unifDim, const double unif[], int attrDim,
-		const double attr[], int varyDim, double vary[]) {
-	double attrHom[4] = {attr[0], attr[1], attr[2], 1.0};
-	double worldHom[4], varyHom[4];
-	/* The modeling transformation is just Z-translation. So this code is much
-	simpler than the usual matrix multiplication. */
-	vecCopy(4, attrHom, worldHom);
-	worldHom[2] += unif[mainUNIFMODELING];
-	vecCopy(4, worldHom, vary);
-	vary[mainVARYWORLDZ] = worldHom[2];
-
-	// MISSING STUFF OTHER THAN VEIWPORT
-	// 140 had V P C-1 in unif cam transformation
-	// refactor for perspective means remove viewport, still have P C-1
-	// pass V to meshrender seperately
+	const double attr[], int varyDim, double vary[]) {
+			double attrHom[4] = {attr[0], attr[1], attr[2], 1.0};
+			double worldHom[4], varyHom[4];
+			/* The modeling transformation is just Z-translation. So this code is much
+			simpler than the usual matrix multiplication. */
+			vecCopy(4, attrHom, worldHom);
+			worldHom[2] += unif[mainUNIFMODELING];
+			// Apply P C^-1 transformation, viewport is handled in meshRender
+			mat441Multiply((double(*)[4])(&unif[mainUNIFCAMERA]), worldHom, varyHom);
+			vecCopy(4, varyHom, vary);
+			vary[mainVARYWORLDZ] = worldHom[2];
 }
 
 /*** Globals ***/
@@ -127,21 +124,19 @@ double unifWater[3 + 1 + 3 + 16] = {
 /*** User interface ***/
 
 void render(void) {
-	double view[4][4], projInvIsom[4][4], viewProjInvIsom[4][4];
+	double view[4][4], projInvIsom[4][4];//, viewProjInvIsom[4][4];
 	camGetProjectionInverseIsometry(&cam, projInvIsom);
 	mat44Viewport(mainSCREENSIZE, mainSCREENSIZE, view);
-	mat444Multiply(view, projInvIsom, viewProjInvIsom);
+	//mat444Multiply(view, projInvIsom, viewProjInvIsom);
 	pixClearRGB(0.0, 0.0, 0.0);
 	depthClearDepths(&buf, 1000000000.0);
-	vecCopy(16, (double *)viewProjInvIsom, &unifGrass[mainUNIFCAMERA]);
-	meshRender(&grass, &buf, (double(*)[4])(&unifGrass[mainUNIFCAMERA]),
-	           &sha, unifGrass, NULL);
-	vecCopy(16, (double *)viewProjInvIsom, &unifRock[mainUNIFCAMERA]);
-	meshRender(&rock, &buf, (double(*)[4])(&unifRock[mainUNIFCAMERA]),
-	           &sha, unifRock, NULL);
-	vecCopy(16, (double *)viewProjInvIsom, &unifWater[mainUNIFCAMERA]);
-	meshRender(&water, &buf, (double(*)[4])(&unifWater[mainUNIFCAMERA]),
-	           &sha, unifWater, NULL);
+	// Copy cam projection inverse isometry to unifs, pass viewport to meshRender
+	vecCopy(16, (double *)projInvIsom, &unifGrass[mainUNIFCAMERA]);
+	meshRender(&grass, &buf, view, &sha, unifGrass, NULL);
+	vecCopy(16, (double *)projInvIsom, &unifRock[mainUNIFCAMERA]);
+	meshRender(&rock, &buf, view, &sha, unifRock, NULL);
+	vecCopy(16, (double *)projInvIsom, &unifWater[mainUNIFCAMERA]);
+	meshRender(&water, &buf, view, &sha, unifWater, NULL);
 }
 
 void handleKeyAny(int key, int shiftIsDown, int controlIsDown,

@@ -18,12 +18,6 @@ struct meshMesh {
 	double *vert;					/* vertNum * attrDim doubles */
 };
 
-#define mainVARYX 0
-#define mainVARYY 1
-#define mainVARYZ 2
-#define mainVARYW 3
-#define mainVARYWORLDZ 4
-
 /* Initializes a mesh with enough memory to hold its triangles and vertices.
 Does not actually fill in those triangles or vertices with useful data. When
 you are finished with the mesh, you must call meshDestroy to deallocate its
@@ -636,13 +630,19 @@ int meshInitializeDissectedLandscape(meshMesh *mesh, const meshMesh *land,
 
 /*** Rendering ***/
 
+#define meshMainVARYX 0
+#define meshMainVARYY 1
+#define meshMainVARYZ 2
+#define meshMainVARYW 3
+#define meshMainVARYWORLDZ 4
+
 /* Clip a triangle at the near-plane and returns new vertices of clipped
 triangle(s). */
 void clipTriangle(const int dim, const double preNear[], const double postNear[],
 	double newVertex[]) {
-		double t = (preNear[mainVARYZ] + preNear[mainVARYW]) /
-		           ((preNear[mainVARYZ] + preNear[mainVARYW]) -
-							 	(postNear[mainVARYZ] + postNear[mainVARYW]));
+		double t = (preNear[meshMainVARYZ] + preNear[meshMainVARYW]) /
+		           ((preNear[meshMainVARYZ] + preNear[meshMainVARYW]) -
+							 	(postNear[meshMainVARYZ] + postNear[meshMainVARYW]));
 		for (int i = 0; i < dim; i++){
 			newVertex[i] = preNear[i] + t * (postNear[i] - preNear[i]);
 		}
@@ -664,9 +664,9 @@ void viewportAndHomogenous(const shaShading *sha, const double varyA[],
 			mat441Multiply(viewport, varyC, varyCViewport);
 
 			// Perform homogeneous division
-			double wInvA = 1.0 / varyAViewport[mainVARYW];
-			double wInvB = 1.0 / varyBViewport[mainVARYW];
-			double wInvC = 1.0 / varyCViewport[mainVARYW];
+			double wInvA = 1.0 / varyAViewport[meshMainVARYW];
+			double wInvB = 1.0 / varyBViewport[meshMainVARYW];
+			double wInvC = 1.0 / varyCViewport[meshMainVARYW];
 			// This should properly draw but have incorrect texture allignment
 			// in perspective, but not scaling S, T causes for incorrect texture
 			// coordinates at vertices. Using 6 or more will have correct
@@ -674,9 +674,9 @@ void viewportAndHomogenous(const shaShading *sha, const double varyA[],
 			vecScale(4, wInvA, varyAViewport, varyAHomog);
 			vecScale(4, wInvB, varyBViewport, varyBHomog);
 			vecScale(4, wInvC, varyCViewport, varyCHomog);
-			varyAHomog[mainVARYW] = wInvA;
-			varyBHomog[mainVARYW] = wInvB;
-			varyCHomog[mainVARYW] = wInvC;
+			varyAHomog[meshMainVARYW] = wInvA;
+			varyBHomog[meshMainVARYW] = wInvB;
+			varyCHomog[meshMainVARYW] = wInvC;
 }
 
 /* Renders the mesh. But if the mesh and the shading have differing values for
@@ -718,13 +718,13 @@ void meshRender(const meshMesh *mesh, depthBuffer *buf,
 				double varyBHomog[sha->varyDim];
 				double varyCHomog[sha->varyDim];
 				int drawA = 1, drawB = 1, drawC = 1; //reads as True in if{}
-				if (varyA[mainVARYW] <= 0 || varyA[mainVARYW] < -varyA[mainVARYZ]){
+				if (varyA[meshMainVARYW] <= 0 || varyA[meshMainVARYW] < -varyA[meshMainVARYZ]){
 					drawA = 0;
 				}
-				if (varyB[mainVARYW] <= 0 || varyB[mainVARYW] < -varyB[mainVARYZ]){
+				if (varyB[meshMainVARYW] <= 0 || varyB[meshMainVARYW] < -varyB[meshMainVARYZ]){
 					drawB = 0;
 				}
-				if (varyC[mainVARYW] <= 0 || varyC[mainVARYW] < -varyC[mainVARYZ]){
+				if (varyC[meshMainVARYW] <= 0 || varyC[meshMainVARYW] < -varyC[meshMainVARYZ]){
 					drawC = 0;
 				}
 

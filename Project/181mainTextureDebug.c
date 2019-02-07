@@ -9,7 +9,7 @@ and demonstrates the rendering of a landscape.
 
 
 /* On macOS, compile with...
-    clang 180mainDiffuse.c 000pixel.o 170engine.o -lglfw -framework OpenGL
+    clang 181mainTextureDebug.c 000pixel.o 170engine.o -lglfw -framework OpenGL
 */
 
 #include <stdio.h>
@@ -77,6 +77,7 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 		vecCopy(4, varyHom, vary);
 		vary[mainVARYS] = attr[mainATTRS];
 		vary[mainVARYT] = attr[mainATTRT];
+		printf("s: %f, t: %f\n", vary[mainVARYS], vary[mainVARYT]);
 }
 
 /*** Globals ***/
@@ -89,37 +90,22 @@ camCamera cam;
 double cameraTarget[3] = {0.0, 0.0, 0.0};
 double cameraRho = 256.0, cameraPhi = M_PI / 4.0, cameraTheta = 0.0;
 /* Textures */
-texTexture grassTex;
 texTexture waterTex;
-texTexture rockTex;
-const texTexture *texturesGrass[1] = {&grassTex};
 const texTexture *texturesWater[1] = {&waterTex};
-const texTexture *texturesRock[1] = {&rockTex};
-const texTexture **texGrass = texturesGrass;
 const texTexture **texWater = texturesWater;
-const texTexture **texRock = texturesRock;
 /* Meshes to be rendered. */
-meshMesh grass;
-double unifGrass[3 + 1 + 3 + 16 + 1] = {
-	0.0, 1.0, 0.0,
-	0.0,
-	0.0, 0.0, 0.0,
-	1.0, 0.0, 0.0, 0.0,
-	0.0, 1.0, 0.0, 0.0,
-	0.0, 0.0, 1.0, 0.0,
-	0.0, 0.0, 0.0, 1.0};
-meshMesh rock;
-double unifRock[3 + 1 + 3 + 16 + 1] = {
-	1.0, 1.0, 1.0,
-	0.0,
-	0.0, 0.0, 0.0,
-	1.0, 0.0, 0.0, 0.0,
-	0.0, 1.0, 0.0, 0.0,
-	0.0, 0.0, 1.0, 0.0,
-	0.0, 0.0, 0.0, 1.0};
 meshMesh water;
-double unifWater[3 + 1 + 3 + 16 + 1] = {
+double unifWater[3 + 1 + 3 + 16] = {
 	0.0, 0.0, 1.0,
+	0.0,
+	0.0, 0.0, 0.0,
+	1.0, 0.0, 0.0, 0.0,
+	0.0, 1.0, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	0.0, 0.0, 0.0, 1.0};
+meshMesh box;
+double unifBox[3 + 1 + 3 + 16] = {
+	1.0, 1.0, 1.0,
 	0.0,
 	0.0, 0.0, 0.0,
 	1.0, 0.0, 0.0, 0.0,
@@ -130,19 +116,18 @@ double unifWater[3 + 1 + 3 + 16 + 1] = {
 /*** User interface ***/
 
 void render(void) {
-	double view[4][4], projInvIsom[4][4];//, viewProjInvIsom[4][4];
+	double view[4][4], projInvIsom[4][4];
 	camGetProjectionInverseIsometry(&cam, projInvIsom);
 	mat44Viewport(mainSCREENSIZE, mainSCREENSIZE, view);
-	//mat444Multiply(view, projInvIsom, viewProjInvIsom);
 	pixClearRGB(0.0, 0.0, 0.0);
 	depthClearDepths(&buf, 1000000000.0);
 	// Copy cam projection inverse isometry to unifs, pass viewport to meshRender
-	vecCopy(16, (double *)projInvIsom, &unifGrass[mainUNIFCAMERA]);
-	meshRender(&grass, &buf, view, &sha, unifGrass, texGrass);
-	vecCopy(16, (double *)projInvIsom, &unifRock[mainUNIFCAMERA]);
-	meshRender(&rock, &buf, view, &sha, unifRock, texRock);
+	printf("Water:\n");
 	vecCopy(16, (double *)projInvIsom, &unifWater[mainUNIFCAMERA]);
 	meshRender(&water, &buf, view, &sha, unifWater, texWater);
+	printf("Box:\n");
+	vecCopy(16, (double *)projInvIsom, &unifBox[mainUNIFCAMERA]);
+	meshRender(&box, &buf, view, &sha, unifBox, texWater);
 }
 
 void handleKeyAny(int key, int shiftIsDown, int controlIsDown,
@@ -206,12 +191,6 @@ int main(void) {
 	landStatistics(landNum, landNum, (double *)landData, &landMin, &landMean,
 		&landMax);
 	double waterData[4] = {landMin, landMin, landMin, landMin};
-	unifGrass[mainUNIFMIN] = landMin;
-	unifGrass[mainUNIFMEAN] = landMean;
-	unifGrass[mainUNIFMAX] = landMax;
-	unifRock[mainUNIFMIN] = landMin;
-	unifRock[mainUNIFMEAN] = landMean;
-	unifRock[mainUNIFMAX] = landMax;
 	unifWater[mainUNIFMIN] = landMin;
 	unifWater[mainUNIFMEAN] = landMean;
 	unifWater[mainUNIFMAX] = landMax;
@@ -224,21 +203,13 @@ int main(void) {
 	if (meshInitializeLandscape(&land, landNum, landNum, 1.0,
 			(double *)landData) != 0)
 		return 3;
-	if (meshInitializeDissectedLandscape(&grass, &land, M_PI / 4.0,
-			1) != 0)
-		return 4;
-	if (meshInitializeDissectedLandscape(&rock, &land, M_PI / 4.0,
-			0) != 0)
-		return 5;
 	if (meshInitializeLandscape(&water, 2, 2, landNum - 1.0,
 			(double *)waterData) != 0)
 		return 6;
-	if (texInitializeFile(&grassTex, "grassTex.jpg") != 0)
-		return 7;
 	if (texInitializeFile(&waterTex, "waterTex.jpg") != 0)
-	  return 8;
-	if (texInitializeFile(&rockTex, "rockTex.jpeg") != 0)
 		return 9;
+	else if (meshInitializeBox(&box, -40.0, 4.0, -40.0, 4.0, -40.0, -1.0) != 0)
+			return 3;
 	else {
 		meshDestroy(&land);
 		/* Continue configuring scene. */
@@ -248,15 +219,9 @@ int main(void) {
 		sha.colorPixel = colorPixel;
 		sha.transformVertex = transformVertex;
 		sha.texNum = 1;
-		texSetFiltering(&grassTex, texNEAREST);
-		texSetLeftRight(&grassTex, texREPEAT);
-		texSetTopBottom(&grassTex, texREPEAT);
 		texSetFiltering(&waterTex, texNEAREST);
 		texSetLeftRight(&waterTex, texREPEAT);
 		texSetTopBottom(&waterTex, texREPEAT);
-		texSetFiltering(&rockTex, texNEAREST);
-		texSetLeftRight(&rockTex, texREPEAT);
-		texSetTopBottom(&rockTex, texREPEAT);
 		camSetProjectionType(&cam, camORTHOGRAPHIC);
 		camSetFrustum(&cam, M_PI / 6.0, cameraRho, 10.0, mainSCREENSIZE,
 			mainSCREENSIZE);
@@ -270,13 +235,9 @@ int main(void) {
 		pixSetTimeStepHandler(handleTimeStep);
 		pixRun();
 		/* Clean up. */
-		meshDestroy(&grass);
-		meshDestroy(&rock);
 		meshDestroy(&water);
 		depthDestroy(&buf);
-		texDestroy(&grassTex);
 		texDestroy(&waterTex);
-		texDestroy(&rockTex);
 		return 0;
 	}
 }

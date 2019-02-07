@@ -159,7 +159,7 @@ int main(void) {
 		return 1;
 	else if (depthInitialize(&buf, mainSCREENSIZE, mainSCREENSIZE) != 0)
 		return 5;
-	else if (texInitializeFile(&texture, "nathan_mannes.jpg") != 0)//"linesbutsideways.jpg") != 0)
+	else if (texInitializeFile(&texture, "waterTex.jpg") != 0)//"linesbutsideways.jpg") != 0)
 		return 2;
 	else if (meshInitializeBox(&box, -2.0, 2.0, -2.0, 2.0, -2.0, -1.0) != 0)
 		return 3;

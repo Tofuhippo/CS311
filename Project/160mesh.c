@@ -634,9 +634,11 @@ int meshInitializeDissectedLandscape(meshMesh *mesh, const meshMesh *land,
 #define meshMainVARYY 1
 #define meshMainVARYZ 2
 #define meshMainVARYW 3
-#define meshMainVARYWORLDZ 4
 #define meshMainVARYS 4
 #define meshMainVARYT 5
+#define meshMainVARYN 6
+#define meshMainVARYO 7
+#define meshMainVARYP 8
 
 /* Clip a triangle at the near-plane and returns new vertices of clipped
 triangle(s). */

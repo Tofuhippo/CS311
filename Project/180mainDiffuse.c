@@ -37,9 +37,11 @@ and demonstrates the rendering of a landscape.
 #define mainVARYY 1
 #define mainVARYZ 2
 #define mainVARYW 3 // w out of transformVertex, 1/w into colorPixel
-#define mainVARYWORLDZ 4
 #define mainVARYS 4
 #define mainVARYT 5
+#define mainVARYN 6
+#define mainVARYO 7
+#define mainVARYP 8
 #define mainUNIFR 0
 #define mainUNIFG 1
 #define mainUNIFB 2
@@ -48,6 +50,8 @@ and demonstrates the rendering of a landscape.
 #define mainUNIFMEAN 5
 #define mainUNIFMAX 6
 #define mainUNIFCAMERA 7
+#define mainUNIFDlight 23
+#define mainUNIFClight 26
 #define mainTEXR 0
 #define mainTEXG 1
 #define mainTEXB 2
@@ -61,9 +65,19 @@ void colorPixel(int unifDim, const double unif[], int texNum,
 		double s = vary[mainVARYS] / vary[mainVARYW];
 		double t = vary[mainVARYT] / vary[mainVARYW];
 		texSample(tex[0], s, t, sample);
-		rgbd[0] = sample[mainTEXR] * unif[mainUNIFR];
-		rgbd[1] = sample[mainTEXG] * unif[mainUNIFG];
-		rgbd[2] = sample[mainTEXB] * unif[mainUNIFB];
+
+		// Lambertian Diffuse Reflection
+		double d_light[3], d_normal[3];
+		vecCopy(3, &unif[mainUNIFDlight], d_light);
+		vecCopy(3, &vary[mainVARYN], d_normal);
+
+
+		double idiff = vecDot(3, d_light, d_normal);
+		printf("idiff: %f\n", idiff);
+
+		rgbd[0] = idiff * sample[mainTEXR] * unif[mainUNIFR];
+		rgbd[1] = idiff * sample[mainTEXG] * unif[mainUNIFG];
+		rgbd[2] = idiff * sample[mainTEXB] * unif[mainUNIFB];
 		rgbd[3] = vary[mainVARYZ];
 }
 
@@ -77,6 +91,18 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 		vecCopy(4, varyHom, vary);
 		vary[mainVARYS] = attr[mainATTRS];
 		vary[mainVARYT] = attr[mainATTRT];
+		// Because we are not using mainUNIFMODELING, we don't need to transform
+		// vector {N, O, P, 0}, but instead just copy attr NOP over to vary NOP?
+
+		// Apply inverse camera rotation to NOP, but not the translation
+		double attrNOPHom[4] = {attr[mainATTRN], attr[mainATTRO], attr[mainATTRP], 0};
+		double attrNOPHomRot[4];
+		mat441Multiply((double(*)[4])(&unif[mainUNIFCAMERA]), attrNOPHom, attrNOPHomRot);
+		//printf("ROT: N: %f, O: %f, P: %f\n", attrNOPHomRot[0], attrNOPHomRot[1], attrNOPHomRot[2]);
+		//printf("Non-ROT: N: %f, O: %f, P: %f\n", attr[mainATTRN], attr[mainATTRO], attr[mainATTRP]);
+		vary[mainVARYN] = attrNOPHomRot[0];
+		vary[mainVARYO] = attrNOPHomRot[1];
+		vary[mainVARYP] = attrNOPHomRot[2];
 }
 
 /*** Globals ***/
@@ -100,32 +126,38 @@ const texTexture **texWater = texturesWater;
 const texTexture **texRock = texturesRock;
 /* Meshes to be rendered. */
 meshMesh grass;
-double unifGrass[3 + 1 + 3 + 16 + 1] = {
+double unifGrass[3 + 1 + 3 + 16 + 3 + 3] = {
 	0.0, 1.0, 0.0,
 	0.0,
 	0.0, 0.0, 0.0,
 	1.0, 0.0, 0.0, 0.0,
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
-	0.0, 0.0, 0.0, 1.0};
+	0.0, 0.0, 0.0, 1.0,
+	0.0, 0.0, 0.0,
+	0.0, 0.0, 0.0};
 meshMesh rock;
-double unifRock[3 + 1 + 3 + 16 + 1] = {
+double unifRock[3 + 1 + 3 + 16 + 3 + 3] = {
 	1.0, 1.0, 1.0,
 	0.0,
 	0.0, 0.0, 0.0,
 	1.0, 0.0, 0.0, 0.0,
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
-	0.0, 0.0, 0.0, 1.0};
+	0.0, 0.0, 0.0, 1.0,
+	0.0, 0.0, 0.0,
+	0.0, 0.0, 0.0};
 meshMesh water;
-double unifWater[3 + 1 + 3 + 16 + 1] = {
+double unifWater[3 + 1 + 3 + 16 + 3 + 3] = {
 	0.0, 0.0, 1.0,
 	0.0,
 	0.0, 0.0, 0.0,
 	1.0, 0.0, 0.0, 0.0,
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
-	0.0, 0.0, 0.0, 1.0};
+	0.0, 0.0, 0.0, 1.0,
+	0.0, 0.0, 0.0,
+	0.0, 0.0, 0.0};
 
 /*** User interface ***/
 
@@ -242,9 +274,9 @@ int main(void) {
 	else {
 		meshDestroy(&land);
 		/* Continue configuring scene. */
-		sha.unifDim = 3 + 1 + 3 + 16;
+		sha.unifDim = 3 + 1 + 3 + 16 + 3 + 3;
 		sha.attrDim = 3 + 2 + 3;
-		sha.varyDim = 4 + 1 + 2;
+		sha.varyDim = 4 + 3 + 2;
 		sha.colorPixel = colorPixel;
 		sha.transformVertex = transformVertex;
 		sha.texNum = 1;

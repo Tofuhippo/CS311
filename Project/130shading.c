@@ -10,7 +10,7 @@ Contains struct for pixel shading attributes.
 typedef struct shaShading shaShading;
 
 struct shaShading{
-  int unifDim, texNum, attrDim, varyDim;
+  int unifDim, attrDim, texNum, varyDim;
   void (*colorPixel)(int unifDim, const double unif[], int texNum,
 			const texTexture *tex[], int varyDim, const double vary[],
 			double rgbd[4]);

@@ -18,12 +18,6 @@ struct meshMesh {
 	double *vert;					/* vertNum * attrDim doubles */
 };
 
-#define mainVARYX 0
-#define mainVARYY 1
-#define mainVARYZ 2
-#define mainVARYW 3
-#define mainVARYWORLDZ 4
-
 /* Initializes a mesh with enough memory to hold its triangles and vertices.
 Does not actually fill in those triangles or vertices with useful data. When
 you are finished with the mesh, you must call meshDestroy to deallocate its
@@ -636,6 +630,12 @@ int meshInitializeDissectedLandscape(meshMesh *mesh, const meshMesh *land,
 
 /*** Rendering ***/
 
+#define mainVARYX 0
+#define mainVARYY 1
+#define mainVARYZ 2
+#define mainVARYW 3
+#define mainVARYWORLDZ 4
+
 /* Clip a triangle at the near-plane and returns new vertices of clipped
 triangle(s). */
 void clipTriangle(const int dim, const double preNear[], const double postNear[],
@@ -667,13 +667,9 @@ void viewportAndHomogenous(const shaShading *sha, const double varyA[],
 			double wInvA = 1.0 / varyAViewport[mainVARYW];
 			double wInvB = 1.0 / varyBViewport[mainVARYW];
 			double wInvC = 1.0 / varyCViewport[mainVARYW];
-			// This should properly draw but have incorrect texture allignment
-			// in perspective, but not scaling S, T causes for incorrect texture
-			// coordinates at vertices. Using 6 or more will have correct
-			// coords but also fix texture allignment
-			vecScale(4, wInvA, varyAViewport, varyAHomog);
-			vecScale(4, wInvB, varyBViewport, varyBHomog);
-			vecScale(4, wInvC, varyCViewport, varyCHomog);
+			vecScale(sha->varyDim, wInvA, varyAViewport, varyAHomog);
+			vecScale(sha->varyDim, wInvB, varyBViewport, varyBHomog);
+			vecScale(sha->varyDim, wInvC, varyCViewport, varyCHomog);
 			varyAHomog[mainVARYW] = wInvA;
 			varyBHomog[mainVARYW] = wInvB;
 			varyCHomog[mainVARYW] = wInvC;

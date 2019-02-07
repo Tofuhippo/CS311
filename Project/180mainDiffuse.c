@@ -48,7 +48,6 @@ and demonstrates the rendering of a landscape.
 #define mainUNIFMEAN 5
 #define mainUNIFMAX 6
 #define mainUNIFCAMERA 7
-#define mainUNIFTEXNUM 23
 #define mainTEXR 0
 #define mainTEXG 1
 #define mainTEXB 2
@@ -59,20 +58,12 @@ void colorPixel(int unifDim, const double unif[], int texNum,
 	const texTexture *tex[], int varyDim, const double vary[],
 	double rgbd[4]) {
 		double sample[tex[0]->texelDim];
-		int whichTex = (int)unif[mainUNIFTEXNUM];
 		double s = vary[mainVARYS] / vary[mainVARYW];
 		double t = vary[mainVARYT] / vary[mainVARYW];
-		if (unif[mainUNIFTEXNUM] >= 0){
-			texSample(tex[whichTex], s, t, sample);
-			rgbd[0] = sample[mainTEXR] * unif[mainUNIFR];
-			rgbd[1] = sample[mainTEXG] * unif[mainUNIFG];
-			rgbd[2] = sample[mainTEXB] * unif[mainUNIFB];
-		}
-		else{
-			rgbd[0] = unif[mainUNIFR];
-			rgbd[1] = unif[mainUNIFG];
-			rgbd[2] = unif[mainUNIFB];
-		}
+		texSample(tex[0], s, t, sample);
+		rgbd[0] = sample[mainTEXR] * unif[mainUNIFR];
+		rgbd[1] = sample[mainTEXG] * unif[mainUNIFG];
+		rgbd[2] = sample[mainTEXB] * unif[mainUNIFB];
 		rgbd[3] = vary[mainVARYZ];
 }
 
@@ -82,7 +73,6 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 		double worldHom[4], varyHom[4];
 		vecCopy(4, attrHom, worldHom);
 		worldHom[2] += unif[mainUNIFMODELING];
-		//mat441Multiply((double(*)[4])(&unif[mainUNIFMODELING]), attrHom, worldHom);
 		mat441Multiply((double(*)[4])(&unif[mainUNIFCAMERA]), worldHom, varyHom);
 		vecCopy(4, varyHom, vary);
 		vary[mainVARYS] = attr[mainATTRS];
@@ -102,8 +92,12 @@ double cameraRho = 256.0, cameraPhi = M_PI / 4.0, cameraTheta = 0.0;
 texTexture grassTex;
 texTexture waterTex;
 texTexture rockTex;
-const texTexture *textures[3] = {&grassTex, &waterTex, &rockTex};
-const texTexture **tex = textures;
+const texTexture *texturesGrass[1] = {&grassTex};
+const texTexture *texturesWater[1] = {&waterTex};
+const texTexture *texturesRock[1] = {&rockTex};
+const texTexture **texGrass = texturesGrass;
+const texTexture **texWater = texturesWater;
+const texTexture **texRock = texturesRock;
 /* Meshes to be rendered. */
 meshMesh grass;
 double unifGrass[3 + 1 + 3 + 16 + 1] = {
@@ -113,8 +107,7 @@ double unifGrass[3 + 1 + 3 + 16 + 1] = {
 	1.0, 0.0, 0.0, 0.0,
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
-	0.0, 0.0, 0.0, 1.0,
-	0.0};
+	0.0, 0.0, 0.0, 1.0};
 meshMesh rock;
 double unifRock[3 + 1 + 3 + 16 + 1] = {
 	1.0, 1.0, 1.0,
@@ -123,8 +116,7 @@ double unifRock[3 + 1 + 3 + 16 + 1] = {
 	1.0, 0.0, 0.0, 0.0,
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
-	0.0, 0.0, 0.0, 1.0,
-	2.0};
+	0.0, 0.0, 0.0, 1.0};
 meshMesh water;
 double unifWater[3 + 1 + 3 + 16 + 1] = {
 	0.0, 0.0, 1.0,
@@ -133,8 +125,7 @@ double unifWater[3 + 1 + 3 + 16 + 1] = {
 	1.0, 0.0, 0.0, 0.0,
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
-	0.0, 0.0, 0.0, 1.0,
-  1.0};
+	0.0, 0.0, 0.0, 1.0};
 
 /*** User interface ***/
 
@@ -147,11 +138,11 @@ void render(void) {
 	depthClearDepths(&buf, 1000000000.0);
 	// Copy cam projection inverse isometry to unifs, pass viewport to meshRender
 	vecCopy(16, (double *)projInvIsom, &unifGrass[mainUNIFCAMERA]);
-	meshRender(&grass, &buf, view, &sha, unifGrass, tex);
+	meshRender(&grass, &buf, view, &sha, unifGrass, texGrass);
 	vecCopy(16, (double *)projInvIsom, &unifRock[mainUNIFCAMERA]);
-	meshRender(&rock, &buf, view, &sha, unifRock, tex);
+	meshRender(&rock, &buf, view, &sha, unifRock, texRock);
 	vecCopy(16, (double *)projInvIsom, &unifWater[mainUNIFCAMERA]);
-	meshRender(&water, &buf, view, &sha, unifWater, tex);
+	meshRender(&water, &buf, view, &sha, unifWater, texWater);
 }
 
 void handleKeyAny(int key, int shiftIsDown, int controlIsDown,
@@ -245,18 +236,18 @@ int main(void) {
 	if (texInitializeFile(&grassTex, "grassTex.jpg") != 0)
 		return 7;
 	if (texInitializeFile(&waterTex, "waterTex.jpg") != 0)
-		return 8;
-	if (texInitializeFile(&grassTex, "rockTex.jpeg") != 0)
+	  return 8;
+	if (texInitializeFile(&rockTex, "rockTex.jpeg") != 0)
 		return 9;
 	else {
 		meshDestroy(&land);
 		/* Continue configuring scene. */
-		sha.unifDim = 3 + 1 + 3 + 16 + 1;
+		sha.unifDim = 3 + 1 + 3 + 16;
 		sha.attrDim = 3 + 2 + 3;
 		sha.varyDim = 4 + 1;
 		sha.colorPixel = colorPixel;
 		sha.transformVertex = transformVertex;
-		sha.texNum = 3;
+		sha.texNum = 1;
 		texSetFiltering(&grassTex, texNEAREST);
 		texSetLeftRight(&grassTex, texREPEAT);
 		texSetTopBottom(&grassTex, texREPEAT);

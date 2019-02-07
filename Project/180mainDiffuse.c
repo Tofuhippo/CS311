@@ -72,12 +72,12 @@ void colorPixel(int unifDim, const double unif[], int texNum,
 		vecCopy(3, &vary[mainVARYN], d_normal);
 
 
-		double idiff = vecDot(3, d_light, d_normal);
-		printf("idiff: %f\n", idiff);
+		double i_diff = vecDot(3, d_light, d_normal);
+		//printf("i_diff: %f\n", i_diff);
 
-		rgbd[0] = idiff * sample[mainTEXR] * unif[mainUNIFR];
-		rgbd[1] = idiff * sample[mainTEXG] * unif[mainUNIFG];
-		rgbd[2] = idiff * sample[mainTEXB] * unif[mainUNIFB];
+		rgbd[0] = i_diff * sample[mainTEXR] * unif[mainUNIFR];
+		rgbd[1] = i_diff * sample[mainTEXG] * unif[mainUNIFG];
+		rgbd[2] = i_diff * sample[mainTEXB] * unif[mainUNIFB];
 		rgbd[3] = vary[mainVARYZ];
 }
 
@@ -134,7 +134,7 @@ double unifGrass[3 + 1 + 3 + 16 + 3 + 3] = {
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
 	0.0, 0.0, 0.0, 1.0,
-	0.0, 0.0, 0.0,
+	100.0, 100.0, 100.0,
 	0.0, 0.0, 0.0};
 meshMesh rock;
 double unifRock[3 + 1 + 3 + 16 + 3 + 3] = {
@@ -145,7 +145,7 @@ double unifRock[3 + 1 + 3 + 16 + 3 + 3] = {
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
 	0.0, 0.0, 0.0, 1.0,
-	0.0, 0.0, 0.0,
+	100.0, 100.0, 100.0,
 	0.0, 0.0, 0.0};
 meshMesh water;
 double unifWater[3 + 1 + 3 + 16 + 3 + 3] = {
@@ -156,7 +156,7 @@ double unifWater[3 + 1 + 3 + 16 + 3 + 3] = {
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
 	0.0, 0.0, 0.0, 1.0,
-	0.0, 0.0, 0.0,
+	100.0, 100.0, 100.0,
 	0.0, 0.0, 0.0};
 
 /*** User interface ***/

@@ -16,7 +16,7 @@ Warm-up for lighting:
 2. XYZ and NOP are the same. These are the same because it is a sphere centered
    at the origin with radius 1, so the points are the same as the outward facing
 	 normals.
-3. If the radius were to be 7, then XYZ = 7 * NOP
+3. If the radius were to be 7, then XYZ = 7 * NOP (individually)
 */
 
 

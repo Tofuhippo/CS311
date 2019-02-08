@@ -70,11 +70,8 @@ void colorPixel(int unifDim, const double unif[], int texNum,
 		double d_light[3], d_normal[3];
 		vecCopy(3, &unif[mainUNIFDlight], d_light);
 		vecCopy(3, &vary[mainVARYN], d_normal);
-
-
 		double i_diff = vecDot(3, d_light, d_normal);
-		//printf("i_diff: %f\n", i_diff);
-
+		// Apply i_diff * c_diff * c_light
 		rgbd[0] = i_diff * sample[mainTEXR] * unif[mainUNIFR];
 		rgbd[1] = i_diff * sample[mainTEXG] * unif[mainUNIFG];
 		rgbd[2] = i_diff * sample[mainTEXB] * unif[mainUNIFB];
@@ -91,15 +88,11 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 		vecCopy(4, varyHom, vary);
 		vary[mainVARYS] = attr[mainATTRS];
 		vary[mainVARYT] = attr[mainATTRT];
-		// Because we are not using mainUNIFMODELING, we don't need to transform
-		// vector {N, O, P, 0}, but instead just copy attr NOP over to vary NOP?
 
 		// Apply inverse camera rotation to NOP, but not the translation
 		double attrNOPHom[4] = {attr[mainATTRN], attr[mainATTRO], attr[mainATTRP], 0};
 		double attrNOPHomRot[4];
 		mat441Multiply((double(*)[4])(&unif[mainUNIFCAMERA]), attrNOPHom, attrNOPHomRot);
-		//printf("ROT: N: %f, O: %f, P: %f\n", attrNOPHomRot[0], attrNOPHomRot[1], attrNOPHomRot[2]);
-		//printf("Non-ROT: N: %f, O: %f, P: %f\n", attr[mainATTRN], attr[mainATTRO], attr[mainATTRP]);
 		vary[mainVARYN] = attrNOPHomRot[0];
 		vary[mainVARYO] = attrNOPHomRot[1];
 		vary[mainVARYP] = attrNOPHomRot[2];
@@ -134,8 +127,8 @@ double unifGrass[3 + 1 + 3 + 16 + 3 + 3] = {
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
 	0.0, 0.0, 0.0, 1.0,
-	100.0, 100.0, 100.0,
-	0.0, 0.0, 0.0};
+	100.0, 100.0, 100.0, //d_light
+	0.0, 0.0, 0.0}; //c_light
 meshMesh rock;
 double unifRock[3 + 1 + 3 + 16 + 3 + 3] = {
 	1.0, 1.0, 1.0,
@@ -145,8 +138,8 @@ double unifRock[3 + 1 + 3 + 16 + 3 + 3] = {
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
 	0.0, 0.0, 0.0, 1.0,
-	100.0, 100.0, 100.0,
-	0.0, 0.0, 0.0};
+	100.0, 100.0, 100.0, //d_light
+	0.0, 0.0, 0.0}; //c_light
 meshMesh water;
 double unifWater[3 + 1 + 3 + 16 + 3 + 3] = {
 	0.0, 0.0, 1.0,
@@ -156,8 +149,8 @@ double unifWater[3 + 1 + 3 + 16 + 3 + 3] = {
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
 	0.0, 0.0, 0.0, 1.0,
-	100.0, 100.0, 100.0,
-	0.0, 0.0, 0.0};
+	100.0, 100.0, 100.0, //d_light
+	0.0, 0.0, 0.0}; //c_light
 
 /*** User interface ***/
 
@@ -165,7 +158,6 @@ void render(void) {
 	double view[4][4], projInvIsom[4][4];//, viewProjInvIsom[4][4];
 	camGetProjectionInverseIsometry(&cam, projInvIsom);
 	mat44Viewport(mainSCREENSIZE, mainSCREENSIZE, view);
-	//mat444Multiply(view, projInvIsom, viewProjInvIsom);
 	pixClearRGB(0.0, 0.0, 0.0);
 	depthClearDepths(&buf, 1000000000.0);
 	// Copy cam projection inverse isometry to unifs, pass viewport to meshRender
@@ -211,6 +203,32 @@ void handleKeyAny(int key, int shiftIsDown, int controlIsDown,
 		camSetProjectionType(&cam, 1);
 	else if (key == GLFW_KEY_2)
 		camSetProjectionType(&cam, 0);
+	// For changing d_light
+	else if (key == GLFW_KEY_3){
+		unifWater[mainUNIFDlight] += 10;
+		unifRock[mainUNIFDlight] += 10;
+		unifGrass[mainUNIFDlight] += 10;}
+	else if (key == GLFW_KEY_4){
+		unifWater[mainUNIFDlight] -= 10;
+		unifRock[mainUNIFDlight] -= 10;
+		unifGrass[mainUNIFDlight] -= 10;}
+	else if (key == GLFW_KEY_5){
+		unifWater[mainUNIFDlight+1] += 10;
+		unifRock[mainUNIFDlight+1] += 10;
+		unifGrass[mainUNIFDlight+1] += 10;}
+	else if (key == GLFW_KEY_6){
+		unifWater[mainUNIFDlight+1] -= 10;
+		unifRock[mainUNIFDlight+1] -= 10;
+		unifGrass[mainUNIFDlight+1] -= 10;}
+	else if (key == GLFW_KEY_7){
+		unifWater[mainUNIFDlight+2] += 10;
+		unifRock[mainUNIFDlight+2] += 10;
+		unifGrass[mainUNIFDlight+2] += 10;}
+	else if (key == GLFW_KEY_8){
+		unifWater[mainUNIFDlight+2] -= 10;
+		unifRock[mainUNIFDlight+2] -= 10;
+		unifGrass[mainUNIFDlight+2] -= 10;}
+
 	camSetFrustum(&cam, M_PI / 6.0, cameraRho, 10.0, mainSCREENSIZE,
 		mainSCREENSIZE);
 	camLookAt(&cam, cameraTarget, cameraRho, cameraPhi, cameraTheta);

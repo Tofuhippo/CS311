@@ -677,6 +677,14 @@ void viewportAndHomogenous(const shaShading *sha, const double varyA[],
 			varyAHomog[meshMainVARYW] = wInvA;
 			varyBHomog[meshMainVARYW] = wInvB;
 			varyCHomog[meshMainVARYW] = wInvC;
+
+			/* NOTE FROM JOSH DAVIS REGARDING ORDER OF VIEWPORT/HOMOGENOUS DIVISION
+			Before we implement perspective-corrected
+			interpolation, the homogeneous division can be performed before or after the
+			viewport transformation; the order doesn't matter. But now our "homogeneous
+			division" is not purely homogeneous division, because it does something funky
+			in the third coordinate. Now, "homogeneous division" must come after the
+			viewport transformation.*/
 }
 
 /* Renders the mesh. But if the mesh and the shading have differing values for

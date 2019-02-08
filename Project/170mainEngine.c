@@ -11,6 +11,8 @@ and demonstrates the rendering of a two meshes using camera isometry.
 Warm-up for lighting:
 1. Box mesh vertices: 24
 	 We need four vertices for each side (6 * 4 = 24)
+	 ^^ fix this, top and bottom each need 6 for proper s and t coordinates = 12
+	 	tryna figure out how other 12 fit with the orientations of the sides still
 2. XYZ and NOP are the same. These are the same because it is a sphere centered
    at the origin with radius 1, so the points are the same as the outward facing
 	 normals.

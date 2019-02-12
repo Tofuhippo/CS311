@@ -9,7 +9,7 @@ and demonstrates the rendering of a landscape.
 
 
 /* On macOS, compile with...
-    clang 180mainDiffuse.c 000pixel.o 170engine.o -lglfw -framework OpenGL
+    clang 190mainSpecular.c 000pixel.o 170engine.o -lglfw -framework OpenGL
 */
 
 #include <stdio.h>
@@ -52,6 +52,11 @@ and demonstrates the rendering of a landscape.
 #define mainUNIFCAMERA 7
 #define mainUNIFDlight 23
 #define mainUNIFClight 26
+#define mainUNIFDcamera 29
+#define mainUNIFSurfaceColorR 32
+#define mainUNIFSurfaceColorG 33
+#define mainUNIFSurfaceColorB 34
+#define mainUNIFShininess 35
 #define mainTEXR 0
 #define mainTEXG 1
 #define mainTEXB 2
@@ -71,11 +76,34 @@ void colorPixel(int unifDim, const double unif[], int texNum,
 		vecUnit(3, &unif[mainUNIFDlight], d_light);
 		vecUnit(3, &vary[mainVARYN], d_normal);
 		double i_diff = vecDot(3, d_light, d_normal);
-		// Apply i_diff * c_diff * c_light
-		rgbd[0] = i_diff * sample[mainTEXR] * unif[mainUNIFR];
-		rgbd[1] = i_diff * sample[mainTEXG] * unif[mainUNIFG];
-		rgbd[2] = i_diff * sample[mainTEXB] * unif[mainUNIFB];
-		rgbd[3] = vary[mainVARYZ];
+    if (i_diff < 0)
+      i_diff = 0;
+
+    // Apply i_diff * c_diff * c_light
+  	rgbd[0] = i_diff * sample[mainTEXR] * unif[mainUNIFR];
+  	rgbd[1] = i_diff * sample[mainTEXG] * unif[mainUNIFG];
+  	rgbd[2] = i_diff * sample[mainTEXB] * unif[mainUNIFB];
+  	rgbd[3] = vary[mainVARYZ];
+
+    // Phong Specular Reflection
+    double d_refl_nonUnit[3], d_refl[3], d_cam[3], d_refl_pre_subtract[3];
+    vecUnit(3, &unif[mainUNIFDcamera], d_cam);
+    // Calculating d_refl
+    double d_refl_multiplier = 2 * vecDot(3, d_light, d_normal);
+    vecScale(3, d_refl_multiplier, d_normal, d_refl_pre_subtract);
+    vecSubtract(3, d_refl_pre_subtract, d_light, d_refl_nonUnit);
+    vecUnit(3, d_refl_nonUnit, d_refl);
+
+    double shininess = unif[mainUNIFShininess];
+    double i_spec = pow(vecDot(3, d_refl, d_cam), shininess);
+    if (i_diff <= 0 || i_spec < 0)
+      i_spec = 0;
+
+    // Add specular reflection (i_spec * c_spec * c_light)
+    rgbd[0] += i_spec * unif[mainUNIFSurfaceColorR] * unif[mainUNIFR];
+  	rgbd[1] += i_spec * unif[mainUNIFSurfaceColorG] * unif[mainUNIFG];
+  	rgbd[2] += i_spec * unif[mainUNIFSurfaceColorB] * unif[mainUNIFB];
+
 }
 
 void transformVertex(int unifDim, const double unif[], int attrDim,
@@ -119,7 +147,7 @@ const texTexture **texWater = texturesWater;
 const texTexture **texRock = texturesRock;
 /* Meshes to be rendered. */
 meshMesh grass;
-double unifGrass[3 + 1 + 3 + 16 + 3 + 3] = {
+double unifGrass[3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1] = {
 	0.0, 1.0, 0.0,
 	0.0,
 	0.0, 0.0, 0.0,
@@ -128,9 +156,12 @@ double unifGrass[3 + 1 + 3 + 16 + 3 + 3] = {
 	0.0, 0.0, 1.0, 0.0,
 	0.0, 0.0, 0.0, 1.0,
 	100.0, 100.0, 100.0, //d_light
-	0.0, 0.0, 0.0}; //c_light
+	0.0, 0.0, 0.0, //c_light
+  0.0, 0.0, 0.0, //d_camera
+  0.0, 0.0, 0.0, //surface color
+  0.0}; //shininess
 meshMesh rock;
-double unifRock[3 + 1 + 3 + 16 + 3 + 3] = {
+double unifRock[3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1] = {
 	1.0, 1.0, 1.0,
 	0.0,
 	0.0, 0.0, 0.0,
@@ -139,9 +170,12 @@ double unifRock[3 + 1 + 3 + 16 + 3 + 3] = {
 	0.0, 0.0, 1.0, 0.0,
 	0.0, 0.0, 0.0, 1.0,
 	100.0, 100.0, 100.0, //d_light
-	0.0, 0.0, 0.0}; //c_light
+	0.0, 0.0, 0.0, //c_light
+  0.0, 0.0, 0.0, //d_camera
+  1.0, 1.0, 1.0, //surface color
+  1.0}; //shininess
 meshMesh water;
-double unifWater[3 + 1 + 3 + 16 + 3 + 3] = {
+double unifWater[3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1] = {
 	0.0, 0.0, 1.0,
 	0.0,
 	0.0, 0.0, 0.0,
@@ -150,7 +184,10 @@ double unifWater[3 + 1 + 3 + 16 + 3 + 3] = {
 	0.0, 0.0, 1.0, 0.0,
 	0.0, 0.0, 0.0, 1.0,
 	100.0, 100.0, 100.0, //d_light
-	0.0, 0.0, 0.0}; //c_light
+	0.0, 0.0, 0.0, //c_light
+  0.0, 0.0, 0.0, //d_camera
+  1.0, 1.0, 1.0, //surface color
+  20.0}; //shininess
 
 /*** User interface ***/
 
@@ -158,6 +195,15 @@ void render(void) {
 	double view[4][4], projInvIsom[4][4];//, viewProjInvIsom[4][4];
 	camGetProjectionInverseIsometry(&cam, projInvIsom);
 	mat44Viewport(mainSCREENSIZE, mainSCREENSIZE, view);
+
+  // Calculate d_cam
+  double d_camera[3];
+  double z[3] = {0.0, 0.0, 1.0};
+  mat331Multiply(cam.isometry.rotation, z, d_camera);
+  vecUnit(3, (double *)d_camera, &unifGrass[mainUNIFDcamera]);
+  vecUnit(3, (double *)d_camera, &unifRock[mainUNIFDcamera]);
+  vecUnit(3, (double *)d_camera, &unifWater[mainUNIFDcamera]);
+
 	pixClearRGB(0.0, 0.0, 0.0);
 	depthClearDepths(&buf, 1000000000.0);
 	// Copy cam projection inverse isometry to unifs, pass viewport to meshRender
@@ -292,7 +338,7 @@ int main(void) {
 	else {
 		meshDestroy(&land);
 		/* Continue configuring scene. */
-		sha.unifDim = 3 + 1 + 3 + 16 + 3 + 3;
+		sha.unifDim = 3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1;
 		sha.attrDim = 3 + 2 + 3;
 		sha.varyDim = 4 + 3 + 2;
 		sha.colorPixel = colorPixel;

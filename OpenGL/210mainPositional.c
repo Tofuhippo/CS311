@@ -4,12 +4,12 @@ February 12 2018
 CS311 with Josh Davis
 
 Main abstracted file that defines the colorPixel and transformVertex functions
-and demonstrates the rendering of a landscape.
+and demonstrates the rendering of a landscape with lighting effects.
 */
 
 
 /* On macOS, compile with...
-    clang 190mainSpecular.c 000pixel.o 170engine.o -lglfw -framework OpenGL
+    clang 210mainPositional.c 000pixel.o 170engine.o -lglfw -framework OpenGL
 */
 
 #include <stdio.h>
@@ -42,6 +42,9 @@ and demonstrates the rendering of a landscape.
 #define mainVARYN 6
 #define mainVARYO 7
 #define mainVARYP 8
+#define mainVARYPFragmentX 9
+#define mainVARYPFragmentY 10
+#define mainVARYPFragmentZ 11
 #define mainUNIFR 0
 #define mainUNIFG 1
 #define mainUNIFB 2
@@ -50,13 +53,16 @@ and demonstrates the rendering of a landscape.
 #define mainUNIFMEAN 5
 #define mainUNIFMAX 6
 #define mainUNIFCAMERA 7
-#define mainUNIFDlight 23
+#define mainUNIFPlight 23
 #define mainUNIFClight 26
-#define mainUNIFDcamera 29
+#define mainUNIFPCamera 29
 #define mainUNIFSurfaceColorR 32
 #define mainUNIFSurfaceColorG 33
 #define mainUNIFSurfaceColorB 34
 #define mainUNIFShininess 35
+#define mainUNIFAmbientR 36
+#define mainUNIFAmbientG 37
+#define mainUNIFAmbientB 38
 #define mainTEXR 0
 #define mainTEXG 1
 #define mainTEXB 2
@@ -69,11 +75,25 @@ void colorPixel(int unifDim, const double unif[], int texNum,
 		double sample[tex[0]->texelDim];
 		double s = vary[mainVARYS] / vary[mainVARYW];
 		double t = vary[mainVARYT] / vary[mainVARYW];
+		double p_fragmentX = vary[mainVARYPFragmentX] / vary[mainVARYW];
+		double p_fragmentY = vary[mainVARYPFragmentY] / vary[mainVARYW];
+		double p_fragmentZ = vary[mainVARYPFragmentZ] / vary[mainVARYW];
+		double p_fragment[3] = {p_fragmentX, p_fragmentY, p_fragmentZ};
 		texSample(tex[0], s, t, sample);
 
+		// Get d_light, d_camera from p_camera, p_fragment, p_light
+		double p_light[3], d_light_nonUnit[3], d_light[3];
+		double d_camera[3], d_camera_nonUnit[3], p_camera[3];
+		vecCopy(3, &unif[mainUNIFPlight], p_light);
+		vecCopy(3, &unif[mainUNIFPCamera], p_camera);
+
+		vecSubtract(3, p_light, p_fragment, d_light_nonUnit);
+		vecUnit(3, d_light_nonUnit, d_light);
+		vecSubtract(3, p_camera, p_fragment, d_camera_nonUnit);
+		vecUnit(3, d_camera_nonUnit, d_camera);
+
 		// Lambertian Diffuse Reflection
-		double d_light[3], d_normal[3];
-		vecUnit(3, &unif[mainUNIFDlight], d_light);
+		double d_normal[3];
 		vecUnit(3, &vary[mainVARYN], d_normal);
 		double i_diff = vecDot(3, d_light, d_normal);
     if (i_diff < 0)
@@ -86,16 +106,16 @@ void colorPixel(int unifDim, const double unif[], int texNum,
   	rgbd[3] = vary[mainVARYZ];
 
     // Phong Specular Reflection
-    double d_refl_nonUnit[3], d_refl[3], d_cam[3], d_refl_pre_subtract[3];
-    vecUnit(3, &unif[mainUNIFDcamera], d_cam);
+    double d_refl_nonUnit[3], d_refl[3], d_refl_pre_subtract[3];
     // Calculating d_refl
     double d_refl_multiplier = 2 * vecDot(3, d_light, d_normal);
     vecScale(3, d_refl_multiplier, d_normal, d_refl_pre_subtract);
     vecSubtract(3, d_refl_pre_subtract, d_light, d_refl_nonUnit);
     vecUnit(3, d_refl_nonUnit, d_refl);
 
+		// Apply shininess
     double shininess = unif[mainUNIFShininess];
-    double i_spec = pow(vecDot(3, d_refl, d_cam), shininess);
+    double i_spec = pow(vecDot(3, d_refl, d_camera), shininess);
     if (i_diff <= 0 || i_spec < 0)
       i_spec = 0;
 
@@ -104,6 +124,10 @@ void colorPixel(int unifDim, const double unif[], int texNum,
   	rgbd[1] += i_spec * unif[mainUNIFSurfaceColorG] * unif[mainUNIFG];
   	rgbd[2] += i_spec * unif[mainUNIFSurfaceColorB] * unif[mainUNIFB];
 
+		// Add ambient light
+    rgbd[0] += sample[mainTEXR] * unif[mainUNIFAmbientR];
+  	rgbd[1] += sample[mainTEXG] * unif[mainUNIFAmbientG];
+  	rgbd[2] += sample[mainTEXB] * unif[mainUNIFAmbientB];
 }
 
 void transformVertex(int unifDim, const double unif[], int attrDim,
@@ -126,6 +150,10 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 		vary[mainVARYN] = attrNOPHom[0];
 		vary[mainVARYO] = attrNOPHom[1];
 		vary[mainVARYP] = attrNOPHom[2];
+
+		vary[mainVARYPFragmentX] = worldHom[0];
+		vary[mainVARYPFragmentY] = worldHom[1];
+		vary[mainVARYPFragmentZ] = worldHom[2];
 }
 
 /*** Globals ***/
@@ -149,7 +177,7 @@ const texTexture **texWater = texturesWater;
 const texTexture **texRock = texturesRock;
 /* Meshes to be rendered. */
 meshMesh grass;
-double unifGrass[3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1] = {
+double unifGrass[3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1 + 3] = {
 	0.0, 1.0, 0.0,
 	0.0,
 	0.0, 0.0, 0.0,
@@ -157,13 +185,14 @@ double unifGrass[3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1] = {
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
 	0.0, 0.0, 0.0, 1.0,
-	100.0, 100.0, 100.0, //d_light
-	0.0, 0.0, 0.0, //c_light
-  0.0, 0.0, 0.0, //d_camera
+	2.0, 50.0, 50.0, //p_light
+	1.0, 1.0, 1.0, //c_light
+  0.0, 0.0, 0.0, //p_camera
   0.0, 0.0, 0.0, //surface color
-  0.0}; //shininess
+  0.0, //shininess
+	0.1, 0.1, 0.1}; //ambient light
 meshMesh rock;
-double unifRock[3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1] = {
+double unifRock[3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1 + 3] = {
 	1.0, 1.0, 1.0,
 	0.0,
 	0.0, 0.0, 0.0,
@@ -171,13 +200,14 @@ double unifRock[3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1] = {
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
 	0.0, 0.0, 0.0, 1.0,
-	100.0, 100.0, 100.0, //d_light
-	0.0, 0.0, 0.0, //c_light
-  0.0, 0.0, 0.0, //d_camera
+	2.0, 50.0, 50.0, //p_light
+	1.0, 1.0, 1.0, //c_light
+  0.0, 0.0, 0.0, //p_camera
   1.0, 1.0, 1.0, //surface color
-  1.0}; //shininess
+	5.0, //shininess
+	0.1, 0.1, 0.1}; //ambient light
 meshMesh water;
-double unifWater[3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1] = {
+double unifWater[3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1 + 3] = {
 	0.0, 0.0, 1.0,
 	0.0,
 	0.0, 0.0, 0.0,
@@ -185,11 +215,12 @@ double unifWater[3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1] = {
 	0.0, 1.0, 0.0, 0.0,
 	0.0, 0.0, 1.0, 0.0,
 	0.0, 0.0, 0.0, 1.0,
-	100.0, 100.0, 100.0, //d_light
-	0.0, 0.0, 0.0, //c_light
-  0.0, 0.0, 0.0, //d_camera
+	2.0, 50.0, 50.0, //p_light
+	1.0, 1.0, 1.0, //c_light
+  0.0, 0.0, 0.0, //p_camera
   1.0, 1.0, 1.0, //surface color
-  20.0}; //shininess
+	40.0, //shininess
+	0.1, 0.1, 0.1}; //ambient light
 
 /*** User interface ***/
 
@@ -198,13 +229,12 @@ void render(void) {
 	camGetProjectionInverseIsometry(&cam, projInvIsom);
 	mat44Viewport(mainSCREENSIZE, mainSCREENSIZE, view);
 
-  // Calculate d_cam
-  double d_camera[3];
-  double z[3] = {0.0, 0.0, 1.0};
-  mat331Multiply(cam.isometry.rotation, z, d_camera);
-  vecUnit(3, (double *)d_camera, &unifGrass[mainUNIFDcamera]);
-  vecUnit(3, (double *)d_camera, &unifRock[mainUNIFDcamera]);
-  vecUnit(3, (double *)d_camera, &unifWater[mainUNIFDcamera]);
+  // Calculate p_cam
+  double p_camera[3];
+  vecCopy(3, cam.isometry.translation, p_camera);
+  vecCopy(3, (double *)p_camera, &unifGrass[mainUNIFPCamera]);
+  vecCopy(3, (double *)p_camera, &unifRock[mainUNIFPCamera]);
+  vecCopy(3, (double *)p_camera, &unifWater[mainUNIFPCamera]);
 
 	pixClearRGB(0.0, 0.0, 0.0);
 	depthClearDepths(&buf, 1000000000.0);
@@ -251,31 +281,31 @@ void handleKeyAny(int key, int shiftIsDown, int controlIsDown,
 		camSetProjectionType(&cam, 1);
 	else if (key == GLFW_KEY_2)
 		camSetProjectionType(&cam, 0);
-	// For changing d_light
+	// For changing p_light
 	else if (key == GLFW_KEY_3){
-		unifWater[mainUNIFDlight] += 10;
-		unifRock[mainUNIFDlight] += 10;
-		unifGrass[mainUNIFDlight] += 10;}
+		unifWater[mainUNIFPlight] += 10;
+		unifRock[mainUNIFPlight] += 10;
+		unifGrass[mainUNIFPlight] += 10;}
 	else if (key == GLFW_KEY_4){
-		unifWater[mainUNIFDlight] -= 10;
-		unifRock[mainUNIFDlight] -= 10;
-		unifGrass[mainUNIFDlight] -= 10;}
+		unifWater[mainUNIFPlight] -= 10;
+		unifRock[mainUNIFPlight] -= 10;
+		unifGrass[mainUNIFPlight] -= 10;}
 	else if (key == GLFW_KEY_5){
-		unifWater[mainUNIFDlight+1] += 10;
-		unifRock[mainUNIFDlight+1] += 10;
-		unifGrass[mainUNIFDlight+1] += 10;}
+		unifWater[mainUNIFPlight+1] += 10;
+		unifRock[mainUNIFPlight+1] += 10;
+		unifGrass[mainUNIFPlight+1] += 10;}
 	else if (key == GLFW_KEY_6){
-		unifWater[mainUNIFDlight+1] -= 10;
-		unifRock[mainUNIFDlight+1] -= 10;
-		unifGrass[mainUNIFDlight+1] -= 10;}
+		unifWater[mainUNIFPlight+1] -= 10;
+		unifRock[mainUNIFPlight+1] -= 10;
+		unifGrass[mainUNIFPlight+1] -= 10;}
 	else if (key == GLFW_KEY_7){
-		unifWater[mainUNIFDlight+2] += 10;
-		unifRock[mainUNIFDlight+2] += 10;
-		unifGrass[mainUNIFDlight+2] += 10;}
+		unifWater[mainUNIFPlight+2] += 10;
+		unifRock[mainUNIFPlight+2] += 10;
+		unifGrass[mainUNIFPlight+2] += 10;}
 	else if (key == GLFW_KEY_8){
-		unifWater[mainUNIFDlight+2] -= 10;
-		unifRock[mainUNIFDlight+2] -= 10;
-		unifGrass[mainUNIFDlight+2] -= 10;}
+		unifWater[mainUNIFPlight+2] -= 10;
+		unifRock[mainUNIFPlight+2] -= 10;
+		unifGrass[mainUNIFPlight+2] -= 10;}
 
 	camSetFrustum(&cam, M_PI / 6.0, cameraRho, 10.0, mainSCREENSIZE,
 		mainSCREENSIZE);
@@ -340,9 +370,9 @@ int main(void) {
 	else {
 		meshDestroy(&land);
 		/* Continue configuring scene. */
-		sha.unifDim = 3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1;
+		sha.unifDim = 3 + 1 + 3 + 16 + 3 + 3 + 3 + 3 + 1 + 3;
 		sha.attrDim = 3 + 2 + 3;
-		sha.varyDim = 4 + 3 + 2;
+		sha.varyDim = 4 + 3 + 2 + 3;
 		sha.colorPixel = colorPixel;
 		sha.transformVertex = transformVertex;
 		sha.texNum = 1;

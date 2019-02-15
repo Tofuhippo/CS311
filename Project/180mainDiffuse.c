@@ -91,11 +91,13 @@ void transformVertex(int unifDim, const double unif[], int attrDim,
 
 		// Apply inverse camera rotation to NOP, but not the translation
 		double attrNOPHom[4] = {attr[mainATTRN], attr[mainATTRO], attr[mainATTRP], 0};
-		double attrNOPHomRot[4];
-		mat441Multiply((double(*)[4])(&unif[mainUNIFCAMERA]), attrNOPHom, attrNOPHomRot);
-		vary[mainVARYN] = attrNOPHomRot[0];
-		vary[mainVARYO] = attrNOPHomRot[1];
-		vary[mainVARYP] = attrNOPHomRot[2];
+		// Normally apply the inverse modeling rotation, but here the only modeling
+		// transformation is a z-translation
+		// double attrNOPHomRot[4];
+		// mat441Multiply((double(*)[4])(&unif[mainUNIFMODELING]), attrNOPHom, attrNOPHomRot);
+		vary[mainVARYN] = attrNOPHom[0];
+		vary[mainVARYO] = attrNOPHom[1];
+		vary[mainVARYP] = attrNOPHom[2];
 }
 
 /*** Globals ***/

@@ -35,10 +35,6 @@ void handleResize(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-/* We're going to use the same mesh as in the preceding tutorial, but we're
-going to load it into GPU memory, instead of keeping it in CPU memory. Once
-it's loaded, we will refer to it using the two unsigned integers in the buffers
-variable. */
 GLuint buffers[2];
 double angleDegree = 0.0;
 
@@ -66,15 +62,10 @@ void render(double oldTime, double newTime) {
 	glLightfv(GL_LIGHT0, GL_POSITION, light);
 	angleDegree += 10.0 * (newTime - oldTime);
 	glRotatef(angleDegree, 1.0, 1.0, 1.0);
-	/* As in the preceding tutorial, rendering the mesh requires calls to
-	glVertexPointer, glNormalPointer, and glColorPointer. What's different is
-	that we don't pass buffers in CPU memory to those functions anymore.
-	Instead we 'bind' a GPU-side buffer and pass offsets into that. */
+
 	glBindBuffer(GL_ARRAY_BUFFER, mesh.buffers[0]);
 	glVertexPointer(3, GL_DOUBLE, mesh.attrDim * sizeof(GLdouble), BUFFER_OFFSET(0));
 	glNormalPointer(GL_DOUBLE, mesh.attrDim * sizeof(GLdouble), BUFFER_OFFSET(0));
-	/* While the vertex positions and normals start at index 0 of the buffer,
-	the color data start at index 3. */
 	glColorPointer(3, GL_DOUBLE, mesh.attrDim * sizeof(GLdouble),
 		BUFFER_OFFSET(3 * sizeof(GLdouble)));
 

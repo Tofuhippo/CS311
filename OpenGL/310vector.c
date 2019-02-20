@@ -1,9 +1,9 @@
 /*
 Dawson d'Almeida and Justin T. Washington
-January 25 2018
+February 15 2018
 CS311 with Josh Davis
 
-General vector functions.
+General vector functions for openGL.
 */
 
 /*** In general dimensions ***/

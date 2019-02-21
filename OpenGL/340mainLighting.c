@@ -3,17 +3,18 @@ Dawson d'Almeida and Justin T. Washington
 February 18 2018
 CS311 with Josh Davis
 
-Main abstracted file that uses openGL to generate a sphere with lighting.
+Main abstracted file that uses openGL to generate a sphere with lighting. 3.x
 */
 
 /* On macOS, compile with...
-    clang 330mainLighting.c -lglfw -framework OpenGL -Wno-deprecated
+    clang 340mainLighting.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <sys/time.h>
+#include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
 
 #include "320shading.c"
@@ -52,8 +53,11 @@ const GLchar **attrNames = attributeNames;
 
 /* The angle variable is no longer in degrees. That's a relief. */
 GLdouble angle = 0.0;
-GLuint buffers[2];
-/* These are new. */
+GLuint buffers[2]; // this is the VBO (vertex buffer object - stores mesh)
+/* The VAO is from 340 */
+GLuint VAO; // this is the VAO (vertex array object -
+            //stores attrib configuration/rendering commands)
+/* These are from 330 (i think)*/
 isoIsometry modeling;
 camCamera cam;
 shaShading sha;
@@ -100,6 +104,28 @@ void initializeMesh(void) {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[1]);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, TRINUM * 3 * sizeof(GLuint),
 		(GLvoid *)triangles, GL_STATIC_DRAW);
+  /* Updated in 340 */
+  GLint positionLoc = sha.attrLocs[ATTRPOSITION];
+	GLint colorLoc = sha.attrLocs[ATTRCOLOR];
+	glGenVertexArrays(1, &VAO);
+	glBindVertexArray(VAO);
+	/* Tell the VAO about the attribute arrays and how they should hook into
+	the vertex shader. These OpenGL calls used to happen at rendering time. Now
+	they happen at initialization time, and the VAO remembers them. Magic. */
+	glBindBuffer(GL_ARRAY_BUFFER, buffers[0]); // do we need this
+	glEnableVertexAttribArray(positionLoc);
+	glVertexAttribPointer(positionLoc, 3, GL_DOUBLE, GL_FALSE,
+		ATTRDIM * sizeof(GLdouble), BUFFER_OFFSET(0));
+	glEnableVertexAttribArray(colorLoc);
+	glVertexAttribPointer(colorLoc, 3, GL_DOUBLE, GL_FALSE,
+		ATTRDIM * sizeof(GLdouble), BUFFER_OFFSET(3 * sizeof(GLdouble)));
+	/* Also tell the VAO about the array of triangle indices (but don't
+	actually draw the triangles now). */
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[1]);
+	/* When you're done issuing commands to a VAO, always unbind it by binding
+	the trivial VAO. (Failure to do this recently cost me several hours of
+	debugging.) */
+	glBindVertexArray(0);
 }
 
 /* Returns 0 on success, non-zero on failure. */
@@ -107,24 +133,27 @@ int initializeShaderProgram(void) {
 	/* The two matrices will be sent to the shaders as uniforms. */
 	// Using position as nop because we are using a unit sphere
 	GLchar vertexCode[] = "\
+    #version 140\n\
 		uniform mat4 viewing;\
 		uniform mat4 modeling;\
-		attribute vec3 position;\
-		attribute vec3 color;\
-		varying vec3 rgb;\
-		varying vec3 nop;\
+		in vec3 position;\
+		in vec3 color;\
+		out vec3 rgb;\
+		out vec3 nop;\
 		void main() {\
 			gl_Position = viewing * modeling * vec4(position, 1.0);\
 			rgb = color;\
 			nop = vec3(modeling * vec4(position, 0.0));\
 		}";
 	GLchar fragmentCode[] = "\
+    #version 140\n\
 		uniform vec3 dLight;\
 		uniform vec3 cLight;\
 		uniform vec3 ambientLight;\
 		uniform vec3 dCamera;\
-		varying vec3 rgb;\
-		varying vec3 nop;\
+		in vec3 rgb;\
+		in vec3 nop;\
+    out vec4 fragColor;\
 		void main() {\
 			vec3 dNormal = normalize(nop);\
 			vec3 dLightNorm = normalize(dLight);\
@@ -143,7 +172,7 @@ int initializeShaderProgram(void) {
 			}\
 			vec3 cSurface = vec3(1.0, 1.0, 1.0);\
 			vec3 specular = iSpec * cSurface * cLight;\
-			gl_FragColor = vec4(diffuse + ambient + specular, 1.0);\
+			fragColor = vec4(diffuse + ambient + specular, 1.0);\
 		}";
 	shaInitialize(&sha, vertexCode, fragmentCode, UNIFNUM, unifNames, ATTRNUM,
 		            attrNames);
@@ -208,37 +237,51 @@ void render(double oldTime, double newTime) {
 	GLdouble viewing[4][4];
 	camGetProjectionInverseIsometry(&cam, viewing);
 	uniformMatrix44(viewing, viewingLoc);
-	/* The rest of the function is just as in the preceding tutorial. */
-	glEnableVertexAttribArray(positionLoc);
-	glEnableVertexAttribArray(colorLoc);
-	glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
-	glVertexAttribPointer(positionLoc, 3, GL_DOUBLE, GL_FALSE,
-		ATTRDIM * sizeof(GLdouble), BUFFER_OFFSET(0));
-	glVertexAttribPointer(colorLoc, 3, GL_DOUBLE, GL_FALSE,
-		ATTRDIM * sizeof(GLdouble), BUFFER_OFFSET(3 * sizeof(GLdouble)));
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[1]);
+  /* Replaced bind, render, unbind in 340 cause of ABSTRACTION. */
+	glBindVertexArray(VAO);
 	glDrawElements(GL_TRIANGLES, TRINUM * 3, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
-	glDisableVertexAttribArray(positionLoc);
-	glDisableVertexAttribArray(colorLoc);
-
+	glBindVertexArray(0);
 }
 
 int main(void) {
 	double oldTime;
 	double newTime = getTime();
   glfwSetErrorCallback(handleError);
-  if (glfwInit() == 0)
+  if (glfwInit() == 0) {
+  	fprintf(stderr, "main: glfwInit failed.\n");
       return 1;
+  }
+  /* Ask GLFW to supply an OpenGL 3.2 context. */
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
   GLFWwindow *window;
-  window = glfwCreateWindow(768, 512, "Learning OpenGL 2.0", NULL, NULL);
+  window = glfwCreateWindow(768, 512, "Learning OpenGL 3.2", NULL, NULL);
   if (window == NULL) {
+  	fprintf(stderr, "main: glfwCreateWindow failed.\n");
       glfwTerminate();
       return 2;
   }
   glfwSetWindowSizeCallback(window, handleResize);
   glfwMakeContextCurrent(window);
+  /* You might think that getting an OpenGL 3.2 context would make OpenGL 3.2
+  available to us. But you'd be wrong. The following call 'loads' a bunch of
+  OpenGL 3.2 functions, so that we can use them. This is why we use GL3W. */
+  if (gl3wInit() != 0) {
+  	fprintf(stderr, "main: gl3wInit failed.\n");
+  	glfwDestroyWindow(window);
+  	glfwTerminate();
+  	return 3;
+  }
+  /* We rarely invoke any GL3W functions other than gl3wInit. But just for an
+  educational example, let's ask GL3W about OpenGL support. */
+	if (gl3wIsSupported(3, 2) == 0)
+		fprintf(stderr, "main: OpenGL 3.2 is not supported.\n");
+	else
+		fprintf(stderr, "main: OpenGL 3.2 is supported.\n");
   fprintf(stderr, "main: OpenGL %s, GLSL %s.\n",
-	glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
+          glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
@@ -248,21 +291,23 @@ int main(void) {
 	camSetProjectionType(&cam, camPERSPECTIVE);
 	camSetFrustum(&cam, M_PI / 6.0, 5.0, 10.0, 768, 512);
 	/* The rest of the program is identical to the preceding tutorial. */
-    initializeMesh();
-    if (initializeShaderProgram() != 0)
-    	return 3;
-    while (glfwWindowShouldClose(window) == 0) {
-        oldTime = newTime;
-    	newTime = getTime();
-		if (floor(newTime) - floor(oldTime) >= 1.0)
-			printf("main: %f frames/sec\n", 1.0 / (newTime - oldTime));
-        render(oldTime, newTime);
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
+  if (initializeShaderProgram() != 0)
+  	return 4;
+  // Initialize mesh after shader so that we can use the attrLocs
+  initializeMesh();
+  while (glfwWindowShouldClose(window) == 0) {
+    oldTime = newTime;
+  	newTime = getTime();
+  	if (floor(newTime) - floor(oldTime) >= 1.0)
+  		printf("main: %f frames/sec\n", 1.0 / (newTime - oldTime));
+    render(oldTime, newTime);
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+  }
   shaDestroy(&sha);
-	glDeleteBuffers(2, buffers);
+  glDeleteBuffers(2, buffers);
+	glDeleteVertexArrays(1, &VAO);
 	glfwDestroyWindow(window);
-    glfwTerminate();
-    return 0;
+  glfwTerminate();
+  return 0;
 }

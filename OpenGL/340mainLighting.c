@@ -112,7 +112,7 @@ void initializeMesh(void) {
 	/* Tell the VAO about the attribute arrays and how they should hook into
 	the vertex shader. These OpenGL calls used to happen at rendering time. Now
 	they happen at initialization time, and the VAO remembers them. Magic. */
-	glBindBuffer(GL_ARRAY_BUFFER, buffers[0]); // do we need this
+	glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
 	glEnableVertexAttribArray(positionLoc);
 	glVertexAttribPointer(positionLoc, 3, GL_DOUBLE, GL_FALSE,
 		ATTRDIM * sizeof(GLdouble), BUFFER_OFFSET(0));

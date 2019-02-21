@@ -1,6 +1,6 @@
 /*
 Dawson d'Almeida and Justin T. Washington
-February 15 2018
+February 20 2018
 CS311 with Josh Davis
 
 Main abstracted file that uses openGL to generate a sphere.
@@ -48,12 +48,6 @@ const GLchar **unifNames = uniformNames;
 const GLchar *attributeNames[ATTRNUM] = {"position", "color"};
 const GLchar **attrNames = attributeNames;
 
-#define TRINUM 8
-#define VERTNUM 6
-// Number of individual indices in attr/unif
-#define ATTRDIM 6 // xyz rgb
-#define UNIFDIM 32 // viewing, modeling
-
 /* The angle variable is no longer in degrees. That's a relief. */
 GLdouble angle = 0.0;
 
@@ -62,7 +56,6 @@ isoIsometry modeling;
 camCamera cam;
 shaShading sha;
 
-GLuint buffers[2];
 double angleDegree = 0.0;
 
 meshglMesh mesh;
@@ -91,16 +84,15 @@ void meshInitializeMiddleStep(void){
 	they happen at initialization time, and the VAO remembers them. Magic. */
 	glEnableVertexAttribArray(positionLoc);
 	glVertexAttribPointer(positionLoc, 3, GL_DOUBLE, GL_FALSE,
-		ATTRDIM * sizeof(GLdouble), BUFFER_OFFSET(0));
+		mesh.attrDim * sizeof(GLdouble), BUFFER_OFFSET(0));
 	glEnableVertexAttribArray(colorLoc);
 	glVertexAttribPointer(colorLoc, 3, GL_DOUBLE, GL_FALSE,
-		ATTRDIM * sizeof(GLdouble), BUFFER_OFFSET(3 * sizeof(GLdouble)));
+		mesh.attrDim * sizeof(GLdouble), BUFFER_OFFSET(3 * sizeof(GLdouble)));
 }
 
 void initializeMesh(void) {
 	meshMesh base;
-	meshInitializeSphere(&base, 5.0, 16.0, 32.0);
-	//meshInitializeCapsule(&base, 20.0, 100.0, 16.0, 32.0);
+	meshInitializeCapsule(&base, 0.5, 2.0, 16.0, 32.0);
 	meshglInitialize(&mesh, &base);
 	meshInitializeMiddleStep();
 	meshglFinishInitialization(&mesh);
@@ -152,7 +144,6 @@ int initializeShaderProgram(void) {
 			vec3 cSurface = vec3(1.0, 1.0, 1.0);\
 			vec3 specular = iSpec * cSurface * cLight;\
 			fragColor = vec4(diffuse + ambient + specular, 1.0);\
-      fragColor = vec4(rgb, 1.0);\
 		}";
 	shaInitialize(&sha, vertexCode, fragmentCode, UNIFNUM, unifNames, ATTRNUM,
 		            attrNames);
@@ -193,13 +184,11 @@ void render(double oldTime, double newTime) {
 	GLint cLightLoc = sha.unifLocs[UNIFCLIGHT];
 	GLint ambientLightLoc = sha.unifLocs[UNIFAMBIENTLIGHT];
 	GLint dCameraLoc = sha.unifLocs[UNIFDCAMERA];
-	// GLint positionLoc = sha.attrLocs[ATTRPOSITION];
-	// GLint colorLoc = sha.attrLocs[ATTRCOLOR];
 
 	/* Set dLight, cLight, ambientLight in uniforms. */
 	GLdouble dLight[3] = {10.0, 10.0, 10.0};
 	GLdouble cLight[3] = {1.0, 1.0, 1.0};
-	GLdouble ambientLight[3] = {0.3, 0.3, 0.3};
+	GLdouble ambientLight[3] = {0.1, 0.1, 0.1};
 	GLdouble dCamera[3] = {15.0, 0.0, 10.0};
 	uniformVector3(dLight, dLightLoc);
 	uniformVector3(cLight, cLightLoc);
@@ -223,7 +212,7 @@ void render(double oldTime, double newTime) {
 	uniformMatrix44(viewing, viewingLoc);
   /* Replaced bind, render, unbind in 340 cause of ABSTRACTION. */
 	glBindVertexArray(mesh.VAO);
-	glDrawElements(GL_TRIANGLES, TRINUM * 3, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
+	glDrawElements(GL_TRIANGLES, mesh.triNum * 3, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
   glBindVertexArray(0);
   meshglRender(&mesh);
 }

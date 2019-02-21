@@ -1,6 +1,6 @@
 /*
 Dawson d'Almeida and Justin T. Washington
-February 15 2018
+February 20 2018
 CS311 with Josh Davis
 
 Creates and manages mesh's in openGL.

@@ -40,7 +40,7 @@ void meshglInitialize(meshglMesh *mesh, const meshMesh *base) {
 	/* Updated in 350 -> initialize VAO as much as possible. */
 	glGenVertexArrays(1, &(mesh->VAO));
 	glBindVertexArray(mesh->VAO);
-	glBindBuffer(GL_ARRAY_BUFFER, mesh->buffers[0]); // do we need this?
+	glBindBuffer(GL_ARRAY_BUFFER, mesh->buffers[0]);
 }
 
 /* Renders the mesh. Immediately before calling this function, you must
@@ -53,9 +53,9 @@ void meshglInitialize(meshglMesh *mesh, const meshMesh *base) {
 	glColorPointer(3, GL_DOUBLE, mesh->attrDim * sizeof(GLdouble),
 		meshglBUFFEROFFSET(3 * sizeof(GLdouble))); */
 void meshglRender(const meshglMesh *mesh) {
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->buffers[1]);
-  glDrawElements(GL_TRIANGLES, mesh->triNum * 3, GL_UNSIGNED_INT,
-		meshglBUFFEROFFSET(0));
+	glBindVertexArray(mesh->VAO);
+	glDrawElements(GL_TRIANGLES, mesh->triNum * 3, GL_UNSIGNED_INT, meshglBUFFEROFFSET(0));
+  glBindVertexArray(0);
 }
 
 /* Releases the resources backing the mesh. Invoke this function when you are

@@ -8,7 +8,7 @@ Main abstracted file that uses openGL to generate a sphere.
 
 
 /* On macOS, compile with...
-    clang 350mainMeshgl.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
+    clang 360mainTexturing.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
 */
 
 #include <stdio.h>
@@ -25,6 +25,7 @@ Main abstracted file that uses openGL to generate a sphere.
 #include "320camera.c"
 #include "310mesh.c"
 #include "350meshgl.c"
+#include "360texture.c"
 
 #define BUFFER_OFFSET(bytes) ((GLubyte*) NULL + (bytes))
 
@@ -34,19 +35,21 @@ Main abstracted file that uses openGL to generate a sphere.
 #define UNIFCLIGHT 3
 #define UNIFAMBIENTLIGHT 4
 #define UNIFPCAMERA 5
+#define UNIFTEXTURE 6
 #define ATTRPOSITION 0
-#define ATTRCOLOR 1
+#define ATTRST 1
 #define ATTRNORMAL 2
 
 // Number of categories that the attr/unif are representing
 // (i.e. position, color, etc..)
-#define UNIFNUM 6
+#define UNIFNUM 7
 #define ATTRNUM 3
 
 const GLchar *uniformNames[UNIFNUM] = {"viewing", "modeling", "dLight",
-                                       "cLight", "ambientLight", "pCamera"};
+                                       "cLight", "ambientLight", "pCamera",
+                                       "texture0"};
 const GLchar **unifNames = uniformNames;
-const GLchar *attributeNames[ATTRNUM] = {"position", "color", "normal"};
+const GLchar *attributeNames[ATTRNUM] = {"position", "st", "normal"};
 const GLchar **attrNames = attributeNames;
 
 /* The angle variable is no longer in degrees. That's a relief. */
@@ -60,6 +63,7 @@ shaShading sha;
 double angleDegree = 0.0;
 
 meshglMesh mesh;
+texTexture tex;
 
 
 double getTime(void) {
@@ -78,20 +82,17 @@ void handleResize(GLFWwindow *window, int width, int height) {
 
 void meshInitializeMiddleStep(void){
 	/* Updated in 350 */
-  GLint positionLoc = sha.attrLocs[ATTRPOSITION];
-	GLint colorLoc = sha.attrLocs[ATTRCOLOR];
-  GLint normalLoc = sha.attrLocs[ATTRNORMAL];
 	/* Tell the VAO about the attribute arrays and how they should hook into
 	the vertex shader. These OpenGL calls used to happen at rendering time. Now
 	they happen at initialization time, and the VAO remembers them. Magic. */
-	glEnableVertexAttribArray(positionLoc);
-	glVertexAttribPointer(positionLoc, 3, GL_DOUBLE, GL_FALSE,
+	glEnableVertexAttribArray(sha.attrLocs[ATTRPOSITION]);
+	glVertexAttribPointer(sha.attrLocs[ATTRPOSITION], 3, GL_DOUBLE, GL_FALSE,
 		mesh.attrDim * sizeof(GLdouble), BUFFER_OFFSET(0));
-	glEnableVertexAttribArray(colorLoc);
-	glVertexAttribPointer(colorLoc, 3, GL_DOUBLE, GL_FALSE,
+  glEnableVertexAttribArray(sha.attrLocs[ATTRST]);
+	glVertexAttribPointer(sha.attrLocs[ATTRST], 2, GL_DOUBLE, GL_FALSE,
 		mesh.attrDim * sizeof(GLdouble), BUFFER_OFFSET(3 * sizeof(GLdouble)));
-  glEnableVertexAttribArray(normalLoc);
-  glVertexAttribPointer(normalLoc, 3, GL_DOUBLE, GL_FALSE,
+  glEnableVertexAttribArray(sha.attrLocs[ATTRNORMAL]);
+  glVertexAttribPointer(sha.attrLocs[ATTRNORMAL], 3, GL_DOUBLE, GL_FALSE,
     mesh.attrDim * sizeof(GLdouble), BUFFER_OFFSET(5 * sizeof(GLdouble)));
 }
 
@@ -107,21 +108,22 @@ void initializeMesh(void) {
 /* Returns 0 on success, non-zero on failure. */
 int initializeShaderProgram(void) {
 	/* The two matrices will be sent to the shaders as uniforms. */
+	// Using position as nop because we are using a unit sphere
 	GLchar vertexCode[] = "\
     #version 140\n\
 		uniform mat4 viewing;\
 		uniform mat4 modeling;\
 		in vec3 position;\
-		in vec3 color;\
+		in vec2 st;\
     in vec3 normal;\
-		out vec4 rgba;\
+		out vec2 texCoords;\
     out vec3 nop;\
     out vec4 world;\
 		void main() {\
       world = modeling * vec4(position, 1.0);\
 			gl_Position = viewing * world;\
-			rgba = vec4(color, 1.0);\
 			nop = vec3(modeling * vec4(normal, 0.0));\
+      texCoords = st;\
 		}";
 	GLchar fragmentCode[] = "\
     #version 140\n\
@@ -129,11 +131,13 @@ int initializeShaderProgram(void) {
 		uniform vec3 cLight;\
 		uniform vec3 ambientLight;\
 		uniform vec3 pCamera;\
-		in vec4 rgba;\
+    uniform sampler2D texture0;\
+		in vec2 texCoords;\
 		in vec3 nop;\
     in vec4 world;\
     out vec4 fragColor;\
 		void main() {\
+      vec3 rgbFromTex = vec3(texture(texture0, texCoords));\
 			vec3 dNormal = normalize(nop);\
 			vec3 dLightNorm = normalize(dLight);\
       vec3 pFragment = vec3(world);\
@@ -142,15 +146,15 @@ int initializeShaderProgram(void) {
 			if (iDiff < 0.0) {\
 				iDiff = 0.0;\
 			}\
-			vec3 diffuse = iDiff * cLight * vec3(rgba);\
-			vec3 ambient = ambientLight * vec3(rgba);\
+			vec3 diffuse = iDiff * cLight * rgbFromTex;\
+			vec3 ambient = rgbFromTex * ambientLight;\
 			vec3 dRefl = normalize((2.0 * dot(dLightNorm, dNormal)) * dNormal - dLightNorm);\
 			float shininess = 10.0;\
 			float iSpec = dot(dRefl, dCameraNorm);\
 			if (iDiff <= 0.0 || iSpec < 0.0) {\
 				iSpec = 0.0;\
 			}\
-      iSpec = pow(iSpec, 1);\
+      iSpec = pow(iSpec, shininess);\
 			vec3 cSurface = vec3(1.0, 1.0, 1.0);\
 			vec3 specular = iSpec * cSurface * cLight;\
 			fragColor = vec4(diffuse + ambient + specular, 1.0);\
@@ -188,41 +192,36 @@ below. It is taken verbatim from the OpenGL Programming Guide, 7th Ed. */
 void render(double oldTime, double newTime) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUseProgram(sha.program);
-	GLint modelingLoc = sha.unifLocs[UNIFMODELING];
-	GLint viewingLoc = sha.unifLocs[UNIFVIEWING];
-	GLint dLightLoc = sha.unifLocs[UNIFDLIGHT];
-	GLint cLightLoc = sha.unifLocs[UNIFCLIGHT];
-	GLint ambientLightLoc = sha.unifLocs[UNIFAMBIENTLIGHT];
-	GLint pCameraLoc = sha.unifLocs[UNIFPCAMERA];
 
 	/* Set dLight, cLight, ambientLight in uniforms. */
-	GLdouble dLight[3] = {1.0, 0.5, 0.5};
+	GLdouble dLight[3] = {10.0, 10.0, 10.0};
 	GLdouble cLight[3] = {1.0, 1.0, 1.0};
 	GLdouble ambientLight[3] = {0.1, 0.1, 0.1};
 	GLdouble pCamera[3] = {15.0, 0.0, 10.0};
-	uniformVector3(dLight, dLightLoc);
-	uniformVector3(cLight, cLightLoc);
-	uniformVector3(ambientLight, ambientLightLoc);
-	uniformVector3(pCamera, pCameraLoc);
+	uniformVector3(dLight, sha.unifLocs[UNIFDLIGHT]);
+	uniformVector3(cLight, sha.unifLocs[UNIFCLIGHT]);
+	uniformVector3(ambientLight, sha.unifLocs[UNIFAMBIENTLIGHT]);
+	uniformVector3(pCamera, sha.unifLocs[UNIFPCAMERA]);
 
 	/* Send our own modeling transformation M to the shaders. */
 	GLdouble trans[3] = {0.0, 0.0, 0.0};
 	isoSetTranslation(&modeling, trans);
-	angle += 0.1 * (newTime - oldTime);
+	angle += 1 * (newTime - oldTime);
 	GLdouble axis[3] = {1.0 / sqrt(3.0), 1.0 / sqrt(3.0), 1.0 / sqrt(3.0)};
 	GLdouble rot[3][3];
 	mat33AngleAxisRotation(angle, axis, rot);
 	isoSetRotation(&modeling, rot);
 	GLdouble model[4][4];
 	isoGetHomogeneous(&modeling, model);
-	uniformMatrix44(model, modelingLoc);
+	uniformMatrix44(model, sha.unifLocs[UNIFMODELING]);
 	/* Send our own viewing transformation P C^-1 to the shaders. */
 	GLdouble viewing[4][4];
 	camGetProjectionInverseIsometry(&cam, viewing);
-	uniformMatrix44(viewing, viewingLoc);
+	uniformMatrix44(viewing, sha.unifLocs[UNIFVIEWING]);
   /* Replaced bind, render, unbind in 340 cause of ABSTRACTION. */
-  glBindVertexArray(0);
+  texRender(&tex, GL_TEXTURE0, 0, sha.unifLocs[UNIFTEXTURE]);
   meshglRender(&mesh);
+  texUnrender(&tex, GL_TEXTURE0);
 }
 
 int main(void) {
@@ -268,13 +267,16 @@ int main(void) {
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	/* Configure the camera once and for all. */
+  //glClearColor(1.0, 1.0, 1.0, 1.0);
 	GLdouble target[3] = {0.0, 0.0, 0.0};
 	camLookAt(&cam, target, 5.0, M_PI / 3.0, -M_PI / 4.0);
 	camSetProjectionType(&cam, camPERSPECTIVE);
 	camSetFrustum(&cam, M_PI / 6.0, 5.0, 10.0, 768, 512);
-	/* The rest of the program is identical to the preceding tutorial. */
 	if (initializeShaderProgram() != 0)
 		return 4;
+  if (texInitializeFile(&tex, "nathan_mannes.jpg", GL_LINEAR, GL_LINEAR,
+                        GL_REPEAT, GL_REPEAT))
+    return 5;
 	// Initialize mesh after shader so that we can use the attrLocs
 	initializeMesh();
   while (glfwWindowShouldClose(window) == 0) {
@@ -287,7 +289,8 @@ int main(void) {
   	glfwPollEvents();
   }
   /* Don't forget to deallocate the buffers that we allocated above. */
-	shaDestroy(&sha);
+  texDestroy(&tex);
+  shaDestroy(&sha);
 	meshglDestroy(&mesh);
 	glfwDestroyWindow(window);
   glfwTerminate();

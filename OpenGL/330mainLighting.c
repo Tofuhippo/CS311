@@ -29,7 +29,7 @@ Main abstracted file that uses openGL to generate a sphere with lighting.
 #define UNIFDLIGHT 2
 #define UNIFCLIGHT 3
 #define UNIFAMBIENTLIGHT 4
-#define UNIFDCAMERA 5
+#define UNIFPCAMERA 5
 #define ATTRPOSITION 0
 #define ATTRCOLOR 1
 
@@ -39,7 +39,7 @@ Main abstracted file that uses openGL to generate a sphere with lighting.
 #define ATTRNUM 2
 
 const GLchar *uniformNames[UNIFNUM] = {"viewing", "modeling", "dLight",
-                                       "cLight", "ambientLight", "dCamera"};
+                                       "cLight", "ambientLight", "pCamera"};
 const GLchar **unifNames = uniformNames;
 const GLchar *attributeNames[ATTRNUM] = {"position", "color"};
 const GLchar **attrNames = attributeNames;
@@ -111,36 +111,41 @@ int initializeShaderProgram(void) {
 		uniform mat4 modeling;\
 		attribute vec3 position;\
 		attribute vec3 color;\
-		varying vec3 rgb;\
+		varying vec4 rgba;\
 		varying vec3 nop;\
+    varying vec4 world;\
 		void main() {\
-			gl_Position = viewing * modeling * vec4(position, 1.0);\
-			rgb = color;\
+      world = modeling * vec4(position, 1.0);\
+			gl_Position = viewing * world;\
+			rgba = vec4(color, 1.0);\
 			nop = vec3(modeling * vec4(position, 0.0));\
 		}";
 	GLchar fragmentCode[] = "\
 		uniform vec3 dLight;\
 		uniform vec3 cLight;\
 		uniform vec3 ambientLight;\
-		uniform vec3 dCamera;\
-		varying vec3 rgb;\
+		uniform vec3 pCamera;\
+		varying vec4 rgba;\
 		varying vec3 nop;\
+    varying vec4 world;\
 		void main() {\
 			vec3 dNormal = normalize(nop);\
 			vec3 dLightNorm = normalize(dLight);\
-			vec3 dCameraNorm = normalize(dCamera);\
+      vec3 pFragment = vec3(world);\
+			vec3 dCameraNorm = normalize(pCamera - pFragment);\
 			float iDiff = dot(dLightNorm, dNormal);\
 			if (iDiff < 0.0) {\
 				iDiff = 0.0;\
 			}\
-			vec3 diffuse = iDiff * cLight * rgb;\
-			vec3 ambient = ambientLight * rgb;\
-			vec3 dRefl = normalize((2.0 * dot(dLightNorm, dNormal)) * dNormal - dLightNorm);\
+			vec3 diffuse = iDiff * cLight * vec3(rgba);\
+			vec3 ambient = ambientLight * vec3(rgba);\
+			vec3 dRefl = 2.0 * dot(dLightNorm, dNormal) * dNormal - dLightNorm;\
 			float shininess = 32.0;\
-			float iSpec = pow(dot(dRefl, dCameraNorm), shininess);\
+			float iSpec = dot(dRefl, dCameraNorm);\
 			if (iDiff <= 0.0 || iSpec < 0.0) {\
 				iSpec = 0.0;\
 			}\
+      iSpec = pow(iSpec, shininess);\
 			vec3 cSurface = vec3(1.0, 1.0, 1.0);\
 			vec3 specular = iSpec * cSurface * cLight;\
 			gl_FragColor = vec4(diffuse + ambient + specular, 1.0);\
@@ -179,19 +184,19 @@ void render(double oldTime, double newTime) {
 	GLint dLightLoc = sha.unifLocs[UNIFDLIGHT];
 	GLint cLightLoc = sha.unifLocs[UNIFCLIGHT];
 	GLint ambientLightLoc = sha.unifLocs[UNIFAMBIENTLIGHT];
-	GLint dCameraLoc = sha.unifLocs[UNIFDCAMERA];
+	GLint pCameraLoc = sha.unifLocs[UNIFPCAMERA];
 	GLint positionLoc = sha.attrLocs[ATTRPOSITION];
 	GLint colorLoc = sha.attrLocs[ATTRCOLOR];
 
 	/* Set dLight, cLight, ambientLight in uniforms. */
-	GLdouble dLight[3] = {10.0, 10.0, 10.0};
+	GLdouble dLight[3] = {1.0, 0.5, 0.5};
 	GLdouble cLight[3] = {1.0, 1.0, 1.0};
 	GLdouble ambientLight[3] = {0.1, 0.1, 0.1};
-	GLdouble dCamera[3] = {15.0, 0.0, 10.0};
+	GLdouble pCamera[3] = {15.0, 0.0, 10.0};
 	uniformVector3(dLight, dLightLoc);
 	uniformVector3(cLight, cLightLoc);
 	uniformVector3(ambientLight, ambientLightLoc);
-	uniformVector3(dCamera, dCameraLoc);
+	uniformVector3(pCamera, pCameraLoc);
 
 	/* Send our own modeling transformation M to the shaders. */
 	GLdouble trans[3] = {0.0, 0.0, 0.0};

@@ -1,14 +1,13 @@
 /*
 Dawson d'Almeida and Justin T. Washington
-February 20 2018
+February 21 2018
 CS311 with Josh Davis
 
 Main abstracted file that uses openGL to generate a sphere.
 */
 
-
 /* On macOS, compile with...
-    clang 360mainTexturing.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
+    clang 380mainScene.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
 */
 
 #include <stdio.h>
@@ -26,6 +25,7 @@ Main abstracted file that uses openGL to generate a sphere.
 #include "310mesh.c"
 #include "350meshgl.c"
 #include "360texture.c"
+#include "370body.c"
 
 #define BUFFER_OFFSET(bytes) ((GLubyte*) NULL + (bytes))
 
@@ -44,6 +44,8 @@ Main abstracted file that uses openGL to generate a sphere.
 // (i.e. position, color, etc..)
 #define UNIFNUM 7
 #define ATTRNUM 3
+#define AUXDIM 0
+#define TEXNUM 1
 
 const GLchar *uniformNames[UNIFNUM] = {"viewing", "modeling", "dLight",
                                        "cLight", "ambientLight", "pCamera",
@@ -52,15 +54,27 @@ const GLchar **unifNames = uniformNames;
 const GLchar *attributeNames[ATTRNUM] = {"position", "st", "normal"};
 const GLchar **attrNames = attributeNames;
 
+
 /* The angle variable is no longer in degrees. That's a relief. */
 GLdouble angle = 0.0;
-
-/* These are from 330 (i think)*/
-isoIsometry modeling;
+/* Things that there are unique to each scene */
 camCamera cam;
 shaShading sha;
-meshglMesh mesh;
-texTexture tex;
+
+/* Things that can be unique for each body */
+/* Added multiple bodies in 380 */
+bodyBody body0;
+bodyBody body1;
+
+isoIsometry modeling;
+
+meshglMesh meshPill;
+meshglMesh meshBox;
+
+texTexture texGrass;
+texTexture texRock;
+texTexture texWater;
+texTexture texNathan;
 
 
 double getTime(void) {
@@ -77,29 +91,36 @@ void handleResize(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-void meshInitializeMiddleStep(void){
+void meshInitializeMiddleStep(bodyBody body){
 	/* Updated in 350 */
 	/* Tell the VAO about the attribute arrays and how they should hook into
 	the vertex shader. These OpenGL calls used to happen at rendering time. Now
 	they happen at initialization time, and the VAO remembers them. Magic. */
 	glEnableVertexAttribArray(sha.attrLocs[ATTRPOSITION]);
 	glVertexAttribPointer(sha.attrLocs[ATTRPOSITION], 3, GL_DOUBLE, GL_FALSE,
-		mesh.attrDim * sizeof(GLdouble), BUFFER_OFFSET(0));
+		body.mesh->attrDim * sizeof(GLdouble), BUFFER_OFFSET(0));
   glEnableVertexAttribArray(sha.attrLocs[ATTRST]);
 	glVertexAttribPointer(sha.attrLocs[ATTRST], 2, GL_DOUBLE, GL_FALSE,
-		mesh.attrDim * sizeof(GLdouble), BUFFER_OFFSET(3 * sizeof(GLdouble)));
+		body.mesh->attrDim * sizeof(GLdouble), BUFFER_OFFSET(3 * sizeof(GLdouble)));
   glEnableVertexAttribArray(sha.attrLocs[ATTRNORMAL]);
   glVertexAttribPointer(sha.attrLocs[ATTRNORMAL], 3, GL_DOUBLE, GL_FALSE,
-    mesh.attrDim * sizeof(GLdouble), BUFFER_OFFSET(5 * sizeof(GLdouble)));
+    body.mesh->attrDim * sizeof(GLdouble), BUFFER_OFFSET(5 * sizeof(GLdouble)));
 }
 
 void initializeMesh(void) {
-	meshMesh base;
-	meshInitializeCapsule(&base, 0.5, 2.0, 16.0, 32.0);
-	meshglInitialize(&mesh, &base);
-	meshInitializeMiddleStep();
-	meshglFinishInitialization(&mesh);
-	meshDestroy(&base);
+	meshMesh basePill;
+	meshInitializeCapsule(&basePill, 0.5, 2.0, 16.0, 32.0);
+	meshglInitialize(body0.mesh, &basePill);
+	meshInitializeMiddleStep(body0);
+	meshglFinishInitialization(body0.mesh);
+	meshDestroy(&basePill);
+
+  meshMesh baseBox;
+  meshInitializeBox(&baseBox, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0);
+  meshglInitialize(body1.mesh, &baseBox);
+	meshInitializeMiddleStep(body1);
+	meshglFinishInitialization(body1.mesh);
+	meshDestroy(&baseBox);
 }
 
 /* Returns 0 on success, non-zero on failure. */
@@ -200,7 +221,9 @@ void render(double oldTime, double newTime) {
 	uniformVector3(ambientLight, sha.unifLocs[UNIFAMBIENTLIGHT]);
 	uniformVector3(pCamera, sha.unifLocs[UNIFPCAMERA]);
 
+  /** TODO: ABSTRACT THIS MODELING CONFIGURATION OUT SO WE CAN EASILY DO MULTIPLE ISOMS **/
 	/* Send our own modeling transformation M to the shaders. */
+  /* Uniformly done for all body/mesh/texture/etc */
 	GLdouble trans[3] = {0.0, 0.0, 0.0};
 	isoSetTranslation(&modeling, trans);
 	angle += 1 * (newTime - oldTime);
@@ -215,31 +238,36 @@ void render(double oldTime, double newTime) {
 	GLdouble viewing[4][4];
 	camGetProjectionInverseIsometry(&cam, viewing);
 	uniformMatrix44(viewing, sha.unifLocs[UNIFVIEWING]);
+
+  /* Individually done for each body/mesh/texture/etc */
   /* Replaced bind, render, unbind in 340 cause of ABSTRACTION. */
-  texRender(&tex, GL_TEXTURE0, 0, sha.unifLocs[UNIFTEXTURE]);
-  meshglRender(&mesh);
-  texUnrender(&tex, GL_TEXTURE0);
+  texRender(body0.tex[0], GL_TEXTURE0, 0, sha.unifLocs[UNIFTEXTURE]);
+  meshglRender(body0.mesh);
+  texUnrender(body0.tex[0], GL_TEXTURE0);
+
+  texRender(body1.tex[0], GL_TEXTURE0, 0, sha.unifLocs[UNIFTEXTURE]);
+  meshglRender(body1.mesh);
+  texUnrender(body1.tex[0], GL_TEXTURE0);
 }
 
-int main(void) {
-	double oldTime;
-	double newTime = getTime();
-	glfwSetErrorCallback(handleError);
-	if (glfwInit() == 0) {
-		fprintf(stderr, "main: glfwInit failed.\n");
-			return 1;
-	}
-	/* Ask GLFW to supply an OpenGL 3.2 context. */
+
+/**************************************/
+/*     Helper functions for main      */
+/**************************************/
+
+/* Initialize GLFWwindow *window and request openGL version. */
+GLFWwindow *window;
+int requestOpenGLVersion(int major, int minor){
+  /* Ask GLFW to supply an OpenGL 3.2 context. */
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, major);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, minor);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-	GLFWwindow *window;
 	window = glfwCreateWindow(768, 512, "Learning OpenGL 3.2", NULL, NULL);
 	if (window == NULL) {
 		fprintf(stderr, "main: glfwCreateWindow failed.\n");
-			glfwTerminate();
-			return 2;
+		glfwTerminate();
+		return 2;
 	}
 	glfwSetWindowSizeCallback(window, handleResize);
 	glfwMakeContextCurrent(window);
@@ -254,28 +282,70 @@ int main(void) {
 	}
 	/* We rarely invoke any GL3W functions other than gl3wInit. But just for an
 	educational example, let's ask GL3W about OpenGL support. */
-	if (gl3wIsSupported(3, 2) == 0)
-		fprintf(stderr, "main: OpenGL 3.2 is not supported.\n");
+	if (gl3wIsSupported(major, minor) == 0)
+		fprintf(stderr, "main: OpenGL %i.%i is not supported.\n", major, minor);
 	else
-		fprintf(stderr, "main: OpenGL 3.2 is supported.\n");
+		fprintf(stderr, "main: OpenGL %i.%i is supported.\n", major, minor);
 	fprintf(stderr, "main: OpenGL %s, GLSL %s.\n",
 					glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-	/* Configure the camera once and for all. */
-  //glClearColor(1.0, 1.0, 1.0, 1.0);
-	GLdouble target[3] = {0.0, 0.0, 0.0};
-	camLookAt(&cam, target, 5.0, M_PI / 3.0, -M_PI / 4.0);
-	camSetProjectionType(&cam, camPERSPECTIVE);
-	camSetFrustum(&cam, M_PI / 6.0, 5.0, 10.0, 768, 512);
-	if (initializeShaderProgram() != 0)
+  return 0;
+}
+
+/* Configure the Camera: Define target, look @ it, set projType and Frustum */
+void configureCamera(void){
+  GLdouble target[3] = {0.0, 0.0, 0.0};
+  camLookAt(&cam, target, 5.0, M_PI / 3.0, -M_PI / 4.0);
+  camSetProjectionType(&cam, camPERSPECTIVE);
+  camSetFrustum(&cam, M_PI / 6.0, 5.0, 10.0, 768, 512);
+}
+
+int main(void) {
+	double oldTime;
+	double newTime = getTime();
+	glfwSetErrorCallback(handleError);
+	if (glfwInit() == 0) {
+		fprintf(stderr, "main: glfwInit failed.\n");
+		return 1;
+	}
+  /* request a particular version of openGL and utilize the global window */
+	if (requestOpenGLVersion(3, 2) != 0)
+    return 23;
+
+  /* for testing, changes window's background */
+  //glClearColor(1.0, 1.0, 0.0, 1.0);
+
+  /* Basic camera configuring, no parameters right now (see helper to change)*/
+  configureCamera();
+
+  /* initialize shader program from XXXshading.c */
+  if (initializeShaderProgram() != 0)
 		return 4;
-  if (texInitializeFile(&tex, "nathan_mannes.jpg", GL_LINEAR, GL_LINEAR,
-                        GL_REPEAT, GL_REPEAT))
+
+  /* 370: Intialize body to hold isometry, mesh, tex, and aux. */
+  if (bodyInitialize(&body0, AUXDIM, TEXNUM))
     return 5;
+  if (bodyInitialize(&body1, AUXDIM, TEXNUM))
+    return 52;
+
+  // Initialize texture
+  bodySetTexture(&body0, 0, &texNathan);
+  bodySetTexture(&body1, 0, &texNathan);
+
+  if (texInitializeFile(&texNathan, "nathan_mannes.jpg", GL_LINEAR, GL_LINEAR,
+                        GL_REPEAT, GL_REPEAT))
+    return 6;
+
 	// Initialize mesh after shader so that we can use the attrLocs
-	initializeMesh();
+  // TODO: Abstract this better
+  bodySetMesh(&body0, &meshPill);
+  bodySetMesh(&body1, &meshBox);
+
+  initializeMesh(); //<-- this piece in particular
+
+
   while (glfwWindowShouldClose(window) == 0) {
     oldTime = newTime;
   	newTime = getTime();
@@ -285,10 +355,15 @@ int main(void) {
   	glfwSwapBuffers(window);
   	glfwPollEvents();
   }
-  /* Don't forget to deallocate the buffers that we allocated above. */
-  texDestroy(&tex);
+
+  //probs could abstract this better too
+  texDestroy(body0.tex[0]);
+  texDestroy(body1.tex[0]);
   shaDestroy(&sha);
-	meshglDestroy(&mesh);
+	meshglDestroy(body0.mesh);
+  meshglDestroy(body1.mesh);
+  bodyDestroy(&body0);
+  bodyDestroy(&body1);
 	glfwDestroyWindow(window);
   glfwTerminate();
   return 0;

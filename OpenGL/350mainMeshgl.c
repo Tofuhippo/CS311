@@ -56,9 +56,6 @@ GLdouble angle = 0.0;
 isoIsometry modeling;
 camCamera cam;
 shaShading sha;
-
-double angleDegree = 0.0;
-
 meshglMesh mesh;
 
 

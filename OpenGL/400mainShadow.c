@@ -8,7 +8,7 @@ Structure/abstraction modelled off of Quinn Mayville's 380mainScene.
 */
 
 /* On macOS, compile with...
-    clang 390mainSpot.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
+    clang 400mainShadow.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
 */
 
 #include <stdio.h>
@@ -28,6 +28,7 @@ Structure/abstraction modelled off of Quinn Mayville's 380mainScene.
 #include "360texture.c"
 #include "370body.c"
 #include "140landscape.c"
+#include "400shadow.c"
 
 #define BUFFER_OFFSET(bytes) ((GLubyte*) NULL + (bytes))
 
@@ -170,7 +171,7 @@ int initializeBaseLandscape(meshMesh *grassBase, meshMesh *rockBase,
 
 
 /* Binds the attributes of mesh in GPU. */
-void meshInitializeMiddleStep(meshglMesh *mesh){
+void meshInitializeMiddleStep(meshglMesh *mesh) {
 	/* Updated in 350 */
 	/* Tell the VAO about the attribute arrays and how they should hook into
 	the vertex shader. These OpenGL calls used to happen at rendering time. Now
@@ -359,10 +360,22 @@ void destroyTextures(void) {
 
 
 camCamera cam;
-/* Sets the camera position */
+/* Sets the camera position. */
 void setCameraPosition() {
 	GLdouble camPosition[3];
 	vecCopy(3, (cam.isometry).translation, camPosition);
+	uniformVector3(camPosition, sha.unifLocs[UNIFPCAMERA]);
+}
+
+
+camCamera spotCam; // Should have same position and direction as spotlight
+/* Sets the spotlight camera position. */
+void setSpotCameraPosition(GLdouble[3] pSpot, GLdouble[3] dSpot) {
+	GLdouble camSpotPosition[3];
+	vecCopy(3, (spotCam.isometry).translation, pSpot);
+  // Maybe do this?
+  // camLookAt(&spotCam, target[3], GLdouble rho, GLdouble phi,
+  // 		GLdouble theta)
 	uniformVector3(camPosition, sha.unifLocs[UNIFPCAMERA]);
 }
 
@@ -376,7 +389,7 @@ bodyBody waterBody;
 bodyBody epcotPillBody;
 /* Initializes the lights, camera, and bodies in the scene. Returns 0 if
 successful, non-zero otherwise. */
-int initializeScene(void){
+int initializeScene(void) {
   /* Configure the camera. */
   cameraRho = 256.0;
   cameraPhi = M_PI / 4.0;
@@ -445,6 +458,21 @@ void destroyScene(void) {
 	bodyDestroy(&rockBody);
 	bodyDestroy(&waterBody);
   bodyDestroy(&epcotPillBody);
+}
+
+
+shadowMap map;
+/* Initializes shadowMap. */
+int initializeShadowMap(void) {
+  if (shadowInitialize(&map, screenWidth, screenHeight) != 0)
+    return 1;
+  return 0;
+}
+
+
+/* Destroys shadowMap. */
+void destroyShadowMap(void) {
+  shadowDestroy(&map);
 }
 
 
@@ -621,6 +649,8 @@ int main(void) {
 		return 5;
 	if (initializeMeshes() != 0)
 		return 6;
+  if (initializeShadowMap() != 0)
+		return 7;
 	initializeScene(); // Where body initialization happens
 
   /* Run the program. */
@@ -639,6 +669,7 @@ int main(void) {
   destroyShading();
   destroyMeshes();
   destroyScene();
+  destroyShadowMap();
 	glfwDestroyWindow(window);
   glfwTerminate();
   return 0;

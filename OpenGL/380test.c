@@ -6,8 +6,10 @@ CS311 with Josh Davis
 Main abstracted file that uses openGL to generate a sphere.
 */
 
+// Currently seg faulting
+
 /* On macOS, compile with...
-    clang 370mainBody.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
+    clang 380test.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
 */
 
 #include <stdio.h>
@@ -26,6 +28,7 @@ Main abstracted file that uses openGL to generate a sphere.
 #include "350meshgl.c"
 #include "360texture.c"
 #include "370body.c"
+#include "140landscape.c"
 
 #define BUFFER_OFFSET(bytes) ((GLubyte*) NULL + (bytes))
 
@@ -54,16 +57,43 @@ const GLchar **unifNames = uniformNames;
 const GLchar *attributeNames[ATTRNUM] = {"position", "st", "normal"};
 const GLchar **attrNames = attributeNames;
 
-/* Added in 370 */
-bodyBody body;
+
 /* The angle variable is no longer in degrees. That's a relief. */
 GLdouble angle = 0.0;
-/* Initialize other structs */
+/* Things that there are unique to each scene */
 camCamera cam;
 shaShading sha;
+
+/* Things that can be unique for each body */
+/* Added multiple bodies in 380 */
+// bodyBody pillNathanBody;
+// bodyBody cubeNathanBody;
+bodyBody grassBody;
+bodyBody rockBody;
+bodyBody waterBody;
+
 isoIsometry modeling;
-meshglMesh mesh;
-texTexture tex;
+
+// meshglMesh pillMesh;
+// meshglMesh cubeMesh;
+meshglMesh grassMesh;
+meshglMesh rockMesh;
+meshglMesh waterMesh;
+// meshglMesh leavesMesh;
+// meshglMesh trunkMesh;
+
+meshMesh landBase;
+
+texTexture grassTex;
+texTexture rockTex;
+texTexture waterTex;
+texTexture nathanTex;
+
+// For land mesh intialization
+#define LANDNUM 100
+double landData[LANDNUM][LANDNUM];
+double landMin, landMean, landMax;
+double waterData[4];
 
 
 double getTime(void) {
@@ -80,7 +110,7 @@ void handleResize(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-void meshInitializeMiddleStep(void){
+void meshInitializeMiddleStep(bodyBody body){
 	/* Updated in 350 */
 	/* Tell the VAO about the attribute arrays and how they should hook into
 	the vertex shader. These OpenGL calls used to happen at rendering time. Now
@@ -97,12 +127,61 @@ void meshInitializeMiddleStep(void){
 }
 
 void initializeMesh(void) {
-	meshMesh base;
-	meshInitializeCapsule(&base, 0.5, 2.0, 16.0, 32.0);
-	meshglInitialize(body.mesh, &base);
-	meshInitializeMiddleStep();
-	meshglFinishInitialization(body.mesh);
-	meshDestroy(&base);
+	// meshMesh basePill;
+	// meshInitializeCapsule(&basePill, 0.5, 2.0, 16.0, 32.0);
+	// meshglInitialize(pillNathanBody.mesh, &basePill);
+	// meshInitializeMiddleStep(pillNathanBody);
+	// meshglFinishInitialization(pillNathanBody.mesh);
+	// meshDestroy(&basePill);
+
+  // meshMesh baseBox;
+  // meshInitializeBox(&baseBox, -0.5, 0.5, -0.5, 0.5, -0.5, 0.5);
+  // meshglInitialize(cubeNathanBody.mesh, &baseBox);
+	// meshInitializeMiddleStep(cubeNathanBody);
+	// meshglFinishInitialization(cubeNathanBody.mesh);
+	// meshDestroy(&baseBox);
+
+  meshglMesh landMesh;
+  if (meshInitializeLandscape(&landBase, LANDNUM, LANDNUM, 1.0,
+			(double *)landData) != 0){
+    printf("meshInitializeLandscape failed\n");
+    exit(0);
+  }
+
+  meshMesh grassBase;
+  if (meshInitializeDissectedLandscape(&grassBase, &landBase, M_PI / 4.0,
+			1) != 0){
+		printf("meshInitializeDissectedLandscape grass failed\n");
+    exit(0);
+  }
+  meshglInitialize(grassBody.mesh, &grassBase);
+	meshInitializeMiddleStep(grassBody);
+	meshglFinishInitialization(grassBody.mesh);
+	meshDestroy(&grassBase);
+
+  meshMesh rockBase;
+  if (meshInitializeDissectedLandscape(&rockBase, &landBase, M_PI / 4.0,
+			1) != 0){
+		printf("meshInitializeDissectedLandscape rock failed\n");
+    exit(0);
+  }
+  meshglInitialize(rockBody.mesh, &rockBase);
+	meshInitializeMiddleStep(rockBody);
+	meshglFinishInitialization(rockBody.mesh);
+	meshDestroy(&rockBase);
+
+  meshMesh waterBase;
+  if (meshInitializeLandscape(&waterBase, 2, 2, LANDNUM - 1.0,
+			(double *)waterData) != 0){
+		printf("meshInitializeLandscape water failed\n");
+    exit(0);
+  }
+  meshglInitialize(waterBody.mesh, &waterBase);
+	meshInitializeMiddleStep(waterBody);
+	meshglFinishInitialization(waterBody.mesh);
+	meshDestroy(&waterBase);
+
+  meshDestroy(&landBase);
 }
 
 /* Returns 0 on success, non-zero on failure. */
@@ -203,10 +282,12 @@ void render(double oldTime, double newTime) {
 	uniformVector3(ambientLight, sha.unifLocs[UNIFAMBIENTLIGHT]);
 	uniformVector3(pCamera, sha.unifLocs[UNIFPCAMERA]);
 
+  /** TODO: ABSTRACT THIS MODELING CONFIGURATION OUT SO WE CAN EASILY DO MULTIPLE ISOMS **/
 	/* Send our own modeling transformation M to the shaders. */
+  /* Uniformly done for all body/mesh/texture/etc */
 	GLdouble trans[3] = {0.0, 0.0, 0.0};
 	isoSetTranslation(&modeling, trans);
-	angle += 1 * (newTime - oldTime);
+	angle += 0;//1 * (newTime - oldTime);
 	GLdouble axis[3] = {1.0 / sqrt(3.0), 1.0 / sqrt(3.0), 1.0 / sqrt(3.0)};
 	GLdouble rot[3][3];
 	mat33AngleAxisRotation(angle, axis, rot);
@@ -214,14 +295,35 @@ void render(double oldTime, double newTime) {
 	GLdouble model[4][4];
 	isoGetHomogeneous(&modeling, model);
 	uniformMatrix44(model, sha.unifLocs[UNIFMODELING]);
-	/* Send our own viewing transformation P C^-1 to the shaders. */
+
+  /* Send our own viewing transformation P C^-1 to the shaders. */
 	GLdouble viewing[4][4];
 	camGetProjectionInverseIsometry(&cam, viewing);
 	uniformMatrix44(viewing, sha.unifLocs[UNIFVIEWING]);
+
+  /* Individually done for each body/mesh/texture/etc */
   /* Replaced bind, render, unbind in 340 cause of ABSTRACTION. */
-  texRender(body.tex[0], GL_TEXTURE0, 0, sha.unifLocs[UNIFTEXTURE]);
-  meshglRender(body.mesh);
-  texUnrender(body.tex[0], GL_TEXTURE0);
+
+  // texRender(pillNathanBody.tex[0], GL_TEXTURE0, 0, sha.unifLocs[UNIFTEXTURE]);
+  // meshglRender(pillNathanBody.mesh);
+  // texUnrender(pillNathanBody.tex[0], GL_TEXTURE0);
+
+  // texRender(cubeNathanBody.tex[0], GL_TEXTURE0, 0, sha.unifLocs[UNIFTEXTURE]);
+  // meshglRender(cubeNathanBody.mesh);
+  // texUnrender(cubeNathanBody.tex[0], GL_TEXTURE0);
+
+  texRender(grassBody.tex[0], GL_TEXTURE0, 0, sha.unifLocs[UNIFTEXTURE]);
+  meshglRender(grassBody.mesh);
+  texUnrender(grassBody.tex[0], GL_TEXTURE0);
+
+  texRender(rockBody.tex[0], GL_TEXTURE0, 0, sha.unifLocs[UNIFTEXTURE]);
+  meshglRender(rockBody.mesh);
+  texUnrender(rockBody.tex[0], GL_TEXTURE0);
+
+  texRender(waterBody.tex[0], GL_TEXTURE0, 0, sha.unifLocs[UNIFTEXTURE]);
+  meshglRender(waterBody.mesh);
+  texUnrender(waterBody.tex[0], GL_TEXTURE0);
+
 }
 
 
@@ -271,9 +373,64 @@ int requestOpenGLVersion(int major, int minor){
 /* Configure the Camera: Define target, look @ it, set projType and Frustum */
 void configureCamera(void){
   GLdouble target[3] = {0.0, 0.0, 0.0};
-  camLookAt(&cam, target, 5.0, M_PI / 3.0, -M_PI / 4.0);
+  double cameraRho = 256.0, cameraPhi = M_PI / 4.0, cameraTheta = 0.0;
+  //camLookAt(&cam, target, 5.0, M_PI / 3.0, -M_PI / 4.0);
   camSetProjectionType(&cam, camPERSPECTIVE);
-  camSetFrustum(&cam, M_PI / 6.0, 5.0, 10.0, 768, 512);
+
+  double mainSCREENSIZE = 512;
+  camSetFrustum(&cam, M_PI / 6.0, cameraRho, 10.0, mainSCREENSIZE,
+    mainSCREENSIZE);
+  camLookAt(&cam, target, cameraRho, cameraPhi, cameraTheta);
+  //camSetFrustum(&cam, M_PI / 6.0, 5.0, 10.0, 768, 512);
+}
+
+void initializeLandscapeHelper() {
+  /* Design landscape and water. */
+	time_t t;
+	int i;
+	srand((unsigned)time(&t));
+	landFlat(LANDNUM, LANDNUM, (double *)landData, 0.0);
+	for (i = 0; i < 32; i += 1)
+		landFault(LANDNUM, LANDNUM, (double *)landData, 1.5 - i * 0.04);
+	for (i = 0; i < 4; i += 1)
+		landBlur(LANDNUM, LANDNUM, (double *)landData);
+	landStatistics(LANDNUM, LANDNUM, (double *)landData, &landMin, &landMean,
+		&landMax);
+	waterData[0] = waterData[1] = waterData[2] = waterData[3] = landMin;
+  // From non-OpenGL main file:
+	// unifGrass[mainUNIFMIN] = landMin;
+	// unifGrass[mainUNIFMEAN] = landMean;
+	// unifGrass[mainUNIFMAX] = landMax;
+	// unifRock[mainUNIFMIN] = landMin;
+	// unifRock[mainUNIFMEAN] = landMean;
+	// unifRock[mainUNIFMAX] = landMax;
+	// unifWater[mainUNIFMIN] = landMin;
+	// unifWater[mainUNIFMEAN] = landMean;
+	// unifWater[mainUNIFMAX] = landMax;
+}
+
+/* Abstracting the intialization of body, and attaching of meshgl to body
+   and tex to mesh */
+void configureBody(bodyBody body, meshglMesh mesh, texTexture tex) {
+  if(bodyInitialize(&body, AUXDIM, TEXNUM)){
+    printf("A body failed to initialize in configureBody");
+    exit(0);
+  }
+  /* needs to be abstracted to handle multiple texutures still */
+  /* Attach at texture to the body */
+  bodySetTexture(&body, 0, &tex);
+  /* needs to be abstracted to handle multiple meshgls still */
+  /* Attach at meshgl to the body */
+  bodySetMesh(&body, &mesh);
+  /* Initialize the meshgl attached to the body from a base mesh */
+}
+
+void cleanBody(bodyBody body){
+  for (int i = 0; i < body.texNum; i++)
+    texDestroy(body.tex[i]);
+  // will eventually need to handle multiple meshes too
+  meshglDestroy(body.mesh);
+  bodyDestroy(&body);
 }
 
 int main(void) {
@@ -298,22 +455,27 @@ int main(void) {
   if (initializeShaderProgram() != 0)
 		return 4;
 
-  if (texInitializeFile(&tex, "nathan_mannes.jpg", GL_LINEAR, GL_LINEAR,
+  initializeLandscapeHelper();
+
+  // if (texInitializeFile(&nathanTex, "nathan_mannes.jpg", GL_LINEAR, GL_LINEAR,
+  //                       GL_REPEAT, GL_REPEAT))
+  //   return 6;
+  if (texInitializeFile(&grassTex, "grassTex.jpg", GL_LINEAR, GL_LINEAR,
                         GL_REPEAT, GL_REPEAT))
     return 6;
-    
-  /* 370: Intialize body to hold isometry, mesh, tex, and aux. */
-  if (bodyInitialize(&body, AUXDIM, TEXNUM))
-    return 5;
+  if (texInitializeFile(&rockTex, "rock2Tex.jpg", GL_LINEAR, GL_LINEAR,
+                        GL_REPEAT, GL_REPEAT))
+    return 6;
+  if (texInitializeFile(&waterTex, "waterTex.jpg", GL_LINEAR, GL_LINEAR,
+                        GL_REPEAT, GL_REPEAT))
+    return 6;
 
-  // Initialize texture
-
-
-  bodySetTexture(&body, 0, &tex);
 	// Initialize mesh after shader so that we can use the attrLocs
-  bodySetMesh(&body, &mesh);
-  initializeMesh();
+  initializeMesh(); //<-- this piece in particular needs to be abstracted
 
+  configureBody(grassBody, grassMesh, grassTex);
+  configureBody(rockBody, rockMesh, rockTex);
+  configureBody(waterBody, waterMesh, waterTex);
 
   while (glfwWindowShouldClose(window) == 0) {
     oldTime = newTime;
@@ -325,10 +487,10 @@ int main(void) {
   	glfwPollEvents();
   }
 
-  texDestroy(body.tex[0]);
+  cleanBody(grassBody);
+  cleanBody(rockBody);
+  cleanBody(waterBody);
   shaDestroy(&sha);
-	meshglDestroy(body.mesh);
-  bodyDestroy(&body);
 	glfwDestroyWindow(window);
   glfwTerminate();
   return 0;

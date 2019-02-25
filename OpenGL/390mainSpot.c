@@ -8,7 +8,7 @@ Structure/abstraction modelled off of Quinn Mayville's 380mainScene.
 */
 
 /* On macOS, compile with...
-    clang 380mainScene.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
+    clang 390mainSpot.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
 */
 
 #include <stdio.h>
@@ -43,20 +43,23 @@ double screenHeight = 512;
 #define UNIFPCAMERA 5
 #define UNIFTEXTURE 6
 #define UNIFSHININESS 7
+#define UNIFPLIGHTSPOT 8
+#define UNIFCLIGHTSPOT 9
 #define ATTRPOSITION 0
 #define ATTRST 1
 #define ATTRNORMAL 2
 
 // Number of categories that the attr/unif are representing
 // (i.e. position, color, etc..)
-#define UNIFNUM 8
+#define UNIFNUM 10
 #define ATTRNUM 3
 #define AUXDIM 1
 #define TEXNUM 1
 
 const GLchar *uniformNames[UNIFNUM] = {"viewing", "modeling", "dLight",
                                        "cLight", "ambientLight", "pCamera",
-                                       "texture0", "shininess"};
+                                       "texture0", "shininess", "pLightSpot",
+                                       "cLightSpot"}; // This breaks it - Why
 const GLchar **unifNames = uniformNames;
 const GLchar *attributeNames[ATTRNUM] = {"position", "st", "normal"};
 const GLchar **attrNames = attributeNames;

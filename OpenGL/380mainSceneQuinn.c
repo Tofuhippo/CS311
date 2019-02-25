@@ -121,7 +121,7 @@ void setMeshAttributes(meshglMesh *mesh){
 		mesh->attrDim * sizeof(GLdouble), BUFFER_OFFSET(0));
 	glEnableVertexAttribArray(texCoordsLoc);
 	/* Set texCoords to ST */
-	glVertexAttribPointer(texCoordsLoc, 3, GL_DOUBLE, GL_FALSE,
+	glVertexAttribPointer(texCoordsLoc, 2, GL_DOUBLE, GL_FALSE,
 		mesh->attrDim * sizeof(GLdouble), BUFFER_OFFSET(3 * sizeof(GLdouble)));
 	glEnableVertexAttribArray(normalLoc);
 	/* Set normal to NOP */
@@ -265,7 +265,7 @@ int initializeTextures(void) {
 		return 1;
 	if (texInitializeFile(&texRock, "rock.jpg", GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT) != 0)
 		return 1;
-	if (texInitializeFile(&texWater, "water.jpg", GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT) != 0)
+	if (texInitializeFile(&texWater, "waterTex.jpg", GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT) != 0)
 		return 1;
 	if (texInitializeFile(&texBush, "bush.jpg", GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT) != 0)
 		return 1;

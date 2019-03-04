@@ -1,6 +1,6 @@
 /*
 Dawson d'Almeida and Justin T. Washington
-February 25 2018
+February 28 2018
 CS311 with Josh Davis
 
 Main abstracted file that uses openGL to generate a sphere.
@@ -8,7 +8,7 @@ Structure/abstraction modelled off of Quinn Mayville's 380mainScene.
 */
 
 /* On macOS, compile with...
-    clang 390mainSpot.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
+    clang 410mainShadow.c /usr/local/gl3w/src/gl3w.o -lglfw -framework OpenGL -framework CoreFoundation -Wno-deprecated
 */
 
 #include <stdio.h>
@@ -24,10 +24,11 @@ Structure/abstraction modelled off of Quinn Mayville's 380mainScene.
 #include "320isometry.c"
 #include "320camera.c"
 #include "310mesh.c"
-#include "350meshgl.c"
+#include "410meshgl.c"
 #include "360texture.c"
 #include "370body.c"
 #include "140landscape.c"
+#include "400shadow.c"
 
 #define BUFFER_OFFSET(bytes) ((GLubyte*) NULL + (bytes))
 
@@ -35,6 +36,7 @@ Structure/abstraction modelled off of Quinn Mayville's 380mainScene.
 double screenWidth = 768;
 double screenHeight = 512;
 
+/* Configure regular uniforms and attributes. */
 #define UNIFVIEWING 0
 #define UNIFMODELING 1
 #define UNIFDLIGHT 2
@@ -46,13 +48,15 @@ double screenHeight = 512;
 #define UNIFPLIGHTSPOT 8
 #define UNIFCLIGHTSPOT 9
 #define UNIFDSPOT 10
+#define UNIFANGLESPOT 11
+#define UNIFVIEWINGS 12
 #define ATTRPOSITION 0
 #define ATTRST 1
 #define ATTRNORMAL 2
 
 // Number of categories that the attr/unif are representing
 // (i.e. position, color, etc..)
-#define UNIFNUM 11
+#define UNIFNUM 13
 #define ATTRNUM 3
 #define AUXDIM 1
 #define TEXNUM 1
@@ -60,13 +64,26 @@ double screenHeight = 512;
 const GLchar *uniformNames[UNIFNUM] = {"viewing", "modeling", "dLight",
                                        "cLight", "ambientLight", "pCamera",
                                        "texture0", "shininess", "pLightSpot",
-                                       "cLightSpot", "dSpot"}; // This breaks it - Why
+                                       "cLightSpot", "dSpot",
+                                       "cosHalfAngleSpot", "viewingS"};
 const GLchar **unifNames = uniformNames;
 const GLchar *attributeNames[ATTRNUM] = {"position", "st", "normal"};
 const GLchar **attrNames = attributeNames;
 
-/* Create shading struct. */
-shaShading sha;
+/* Configure shadow uniforms and attributes. */
+#define UNIFSHADOWVIEWING 0
+#define UNIFSHADOWMODELING 1
+#define UNIFSHADOWRGB 2
+#define ATTRSHADOWPOSITION 0
+
+#define UNIFSHADOWNUM 3
+#define ATTRSHADOWNUM 1
+
+const GLchar *uniformShadowNames[UNIFSHADOWNUM] = {"viewing", "modeling",
+                                                   "rgb"};
+const GLchar **unifShadowNames = uniformShadowNames;
+const GLchar *attributeShadowNames[ATTRSHADOWNUM] = {"position"};
+const GLchar **attrShadowNames = attributeShadowNames;
 
 
 /***********************************/
@@ -120,6 +137,133 @@ void uniformVector3(GLdouble v[3], GLint uniformLocation) {
 /*     Start: Initialization, rendering, and destroying Functions     */
 /**********************************************************************/
 
+
+/* Create shading structs. */
+shaShading sha;
+shaShading shadowSha;
+/* Initialize ShaderPrograms. Returns 0 on success, non-zero on failure. */
+int initializeShaderProgram(void) {
+	/* The two matrices will be sent to the shaders as uniforms. */
+  /* Initialize regular shader. */
+	GLchar vertexCode[] = "\
+    #version 140\n\
+		uniform mat4 viewing;\
+		uniform mat4 modeling;\
+    uniform mat4 viewingS;\
+		in vec3 position;\
+		in vec2 st;\
+    in vec3 normal;\
+		out vec2 texCoords;\
+    out vec3 nop;\
+    out vec4 world;\
+    out vec4 pFragmentS;\
+		void main() {\
+      mat4 scaleBias = mat4(0.5, 0.0, 0.0, 0.0,\
+                  		      0.0, 0.5, 0.0, 0.0,\
+                  		      0.0, 0.0, 0.5, 0.0,\
+                  		      0.5, 0.5, 0.5, 1.0);\
+	    world = modeling * vec4(position, 1.0);\
+	    pFragmentS = scaleBias * viewingS * world;\
+			gl_Position = viewing * world;\
+			nop = vec3(modeling * vec4(normal, 0.0));\
+      texCoords = st;\
+		}";
+	GLchar fragmentCode[] = "\
+    #version 140\n\
+		uniform vec3 dLight;\
+		uniform vec3 cLight;\
+		uniform vec3 ambientLight;\
+		uniform vec3 pCamera;\
+    uniform sampler2D texture0;\
+    uniform float shininess;\
+    uniform vec3 pLightSpot;\
+    uniform vec3 cLightSpot;\
+    uniform vec3 dSpot;\
+    uniform float cosHalfAngleSpot;\
+		in vec2 texCoords;\
+		in vec3 nop;\
+    in vec4 world;\
+    in vec4 pFragmentS;\
+    out vec4 fragColor;\
+		void main() {\
+      vec3 rgbFromTex = vec3(texture(texture0, texCoords));\
+      vec3 cDiff = rgbFromTex;\
+			vec3 dNormal = normalize(nop);\
+			vec3 dLightNorm = normalize(dLight);\
+      vec3 pFragment = vec3(world);\
+			vec3 dCameraNorm = normalize(pCamera - pFragment);\
+			float iDiff = dot(dLightNorm, dNormal);\
+			if (iDiff < 0.0) {\
+				iDiff = 0.0;\
+			}\
+			vec3 diffuse = iDiff * cLight * rgbFromTex;\
+			vec3 ambient = rgbFromTex * ambientLight;\
+			vec3 dRefl = normalize((2.0 * dot(dLightNorm, dNormal)) * dNormal - dLightNorm);\
+			float iSpec = dot(dRefl, dCameraNorm);\
+			if (iDiff <= 0.0 || iSpec < 0.0) {\
+				iSpec = 0.0;\
+			}\
+      iSpec = pow(iSpec, shininess);\
+			vec3 cSurface = vec3(1.0, 1.0, 1.0);\
+			vec3 specular = iSpec * cSurface * cLight;\
+      \
+      vec3 dLightSpot = normalize(pLightSpot - pFragment);\
+      float iDiffSpot = dot(dLightSpot, dNormal);\
+      if (iDiffSpot < 0.0) {\
+				iDiffSpot = 0.0;\
+			}\
+      vec3 diffuseSpot = iDiffSpot * cLightSpot * rgbFromTex;\
+      vec3 dReflSpot = normalize((2.0 * dot(dLightSpot, dNormal)) * dNormal - dLightSpot);\
+			float iSpecSpot = dot(dReflSpot, dSpot);\
+			if (iDiffSpot <= 0.0 || iSpecSpot < 0.0) {\
+				iSpecSpot = 0.0;\
+			}\
+      iSpecSpot = pow(iSpecSpot, shininess);\
+      vec3 specularSpot = iSpecSpot * cSurface * cLightSpot;\
+      if (dot(dSpot, dLightSpot) < cosHalfAngleSpot) {\
+        diffuseSpot = vec3(0.0, 0.0, 0.0);\
+        specularSpot = vec3(0.0, 0.0, 0.0);\
+      }\
+      fragColor = vec4(diffuse + ambient + specular + diffuseSpot + specularSpot, 1.0);\
+		}";
+	shaInitialize(&sha, vertexCode, fragmentCode, UNIFNUM, unifNames, ATTRNUM,
+		            attrNames);
+
+  /* Initialize shadow shader program. */
+	GLchar vertexCodeShadow[] = "\
+		#version 140\n\
+		uniform mat4 viewing;\
+		uniform mat4 modeling;\
+		in vec3 position;\
+		void main() {\
+			vec4 world = modeling * vec4(position, 1.0);\
+			gl_Position = viewing * world;\
+		}";
+	GLchar fragmentCodeShadow[] = "\
+		#version 140\n\
+		uniform vec3 rgb;\
+		out vec4 fragColor;\
+		void main() {\
+			fragColor = vec4(rgb, 1.0);\
+		}";
+
+  shaInitialize(&shadowSha, vertexCodeShadow, fragmentCodeShadow, UNIFSHADOWNUM,
+                unifShadowNames, ATTRSHADOWNUM, attrShadowNames);
+
+  /* Use regular program for set-up. */
+	glUseProgram(sha.program);
+
+	return (sha.program == 0 && shadowSha.program == 0);
+}
+
+
+/* Destroys shading program(s). */
+void destroyShading(void) {
+  shaDestroy(&sha);
+  shaDestroy(&shadowSha);
+}
+
+
 double camTarget[3];
 /* Initialize landscape base meshes. Returns 0 if successful,
 non-zero otherwise. */
@@ -170,7 +314,7 @@ int initializeBaseLandscape(meshMesh *grassBase, meshMesh *rockBase,
 
 
 /* Binds the attributes of mesh in GPU. */
-void meshInitializeMiddleStep(meshglMesh *mesh){
+void meshInitializeMiddleStep(meshglMesh *mesh) {
 	/* Updated in 350 */
 	/* Tell the VAO about the attribute arrays and how they should hook into
 	the vertex shader. These OpenGL calls used to happen at rendering time. Now
@@ -185,6 +329,13 @@ void meshInitializeMiddleStep(meshglMesh *mesh){
   glVertexAttribPointer(sha.attrLocs[ATTRNORMAL], 3, GL_DOUBLE, GL_FALSE,
     mesh->attrDim * sizeof(GLdouble), BUFFER_OFFSET(5 * sizeof(GLdouble)));
 
+  /* Initialize for shadow mapping shader */
+	meshglContinueInitialization(mesh);
+  glEnableVertexAttribArray(shadowSha.attrLocs[ATTRSHADOWPOSITION]);
+	glVertexAttribPointer(shadowSha.attrLocs[ATTRSHADOWPOSITION], 3, GL_DOUBLE,
+    GL_FALSE, mesh->attrDim * sizeof(GLdouble), BUFFER_OFFSET(0));
+
+  /* Finish initialization. */
   meshglFinishInitialization(mesh);
 }
 
@@ -237,92 +388,18 @@ void destroyMeshes(void) {
 }
 
 
-/* Returns 0 on success, non-zero on failure. */
-int initializeShaderProgram(void) {
-	/* The two matrices will be sent to the shaders as uniforms. */
-	GLchar vertexCode[] = "\
-    #version 140\n\
-		uniform mat4 viewing;\
-		uniform mat4 modeling;\
-		in vec3 position;\
-		in vec2 st;\
-    in vec3 normal;\
-		out vec2 texCoords;\
-    out vec3 nop;\
-    out vec4 world;\
-		void main() {\
-      world = modeling * vec4(position, 1.0);\
-			gl_Position = viewing * world;\
-			nop = vec3(modeling * vec4(normal, 0.0));\
-      texCoords = st;\
-		}";
-	GLchar fragmentCode[] = "\
-    #version 140\n\
-		uniform vec3 dLight;\
-		uniform vec3 cLight;\
-		uniform vec3 ambientLight;\
-		uniform vec3 pCamera;\
-    uniform sampler2D texture0;\
-    uniform float shininess;\
-    uniform vec3 pLightSpot;\
-    uniform vec3 cLightSpot;\
-    uniform vec3 dSpot;\
-		in vec2 texCoords;\
-		in vec3 nop;\
-    in vec4 world;\
-    out vec4 fragColor;\
-		void main() {\
-      vec3 rgbFromTex = vec3(texture(texture0, texCoords));\
-      vec3 cDiff = rgbFromTex;\
-			vec3 dNormal = normalize(nop);\
-			vec3 dLightNorm = normalize(dLight);\
-      vec3 pFragment = vec3(world);\
-			vec3 dCameraNorm = normalize(pCamera - pFragment);\
-			float iDiff = dot(dLightNorm, dNormal);\
-			if (iDiff < 0.0) {\
-				iDiff = 0.0;\
-			}\
-			vec3 diffuse = iDiff * cLight * rgbFromTex;\
-			vec3 ambient = rgbFromTex * ambientLight;\
-			vec3 dRefl = normalize((2.0 * dot(dLightNorm, dNormal)) * dNormal - dLightNorm);\
-			float iSpec = dot(dRefl, dCameraNorm);\
-			if (iDiff <= 0.0 || iSpec < 0.0) {\
-				iSpec = 0.0;\
-			}\
-      iSpec = pow(iSpec, shininess);\
-			vec3 cSurface = vec3(1.0, 1.0, 1.0);\
-			vec3 specular = iSpec * cSurface * cLight;\
-      \
-      float angleSpot = 0.1;\
-      float cosSpotAngle = .98;\
-      vec3 dLightSpot = normalize(pLightSpot - pFragment);\
-      float iDiffSpot = dot(dLightSpot, dNormal);\
-      if (iDiffSpot < 0.0) {\
-				iDiffSpot = 0.0;\
-			}\
-      vec3 diffuseSpot = iDiffSpot * cLightSpot * rgbFromTex;\
-      vec3 dReflSpot = normalize((2.0 * dot(dLightSpot, dNormal)) * dNormal - dLightSpot);\
-			float iSpecSpot = dot(dReflSpot, dSpot);\
-			if (iDiffSpot <= 0.0 || iSpecSpot < 0.0) {\
-				iSpecSpot = 0.0;\
-			}\
-      iSpecSpot = pow(iSpecSpot, shininess);\
-      vec3 specularSpot = iSpecSpot * cSurface * cLightSpot;\
-      if (dot(dSpot, dLightSpot) < cosSpotAngle) {\
-        diffuseSpot = vec3(0.0, 0.0, 0.0);\
-        specularSpot = vec3(0.0, 0.0, 0.0);\
-      }\
-      fragColor = vec4(diffuse + ambient + specular + diffuseSpot + specularSpot, 1.0);\
-		}";
-	shaInitialize(&sha, vertexCode, fragmentCode, UNIFNUM, unifNames, ATTRNUM,
-		            attrNames);
-	return (sha.program == 0);
+GLuint shadowWidth = 512;
+GLuint shadowHeight = 512;
+shadowMap map;
+/* Initializes shadowMap. Returns 0 on success, non-zero on failure. */
+int initializeShadowMap(void) {
+  return shadowInitialize(&map, shadowWidth, shadowHeight);
 }
 
 
-/* Destroys shading program(s). */
-void destroyShading(void) {
-  shaDestroy(&sha);
+/* Destroys shadowMap. */
+void destroyShadowMap(void) {
+  shadowDestroy(&map);
 }
 
 
@@ -358,31 +435,60 @@ void destroyTextures(void) {
 
 
 camCamera cam;
-/* Sets the camera position */
-void setCameraPosition() {
+camCamera spotCam; // Should have same position and direction as spotlight
+double cameraRho = 256;
+double cameraPhi = M_PI / 4.0;
+double cameraTheta = 0.0;
+double pLightSpot[3] = {50.0, -20.0, 5.0};  // Starting position of spot light
+double dSpot[3] = {0.0, 1.5, -1.6}; // Starting direction of spot light
+double spotCamTheta =  M_PI / 8.0;
+double cosSpot;
+/* Sets the cameras positions, where spotCam is looking from the perspective
+of the spotlight. */
+void setCamerasPositions() {
+  /* Set cam position and look-at. */
+  camSetFrustum(&cam, M_PI / 6.0, cameraRho, 10.0, screenWidth, screenHeight);
+  camLookAt(&cam, camTarget, cameraRho, cameraPhi, cameraTheta);
+
+  /* Set spotCam camera position and look-at. */
+	camSetFrustum(&spotCam, spotCamTheta, 256.0, 10.0, shadowWidth, shadowHeight);
+	camLookAt(&spotCam, pLightSpot, dSpot[0], dSpot[1], dSpot[2]);
+
+  /* Pass cam position to unifs. */
 	GLdouble camPosition[3];
 	vecCopy(3, (cam.isometry).translation, camPosition);
 	uniformVector3(camPosition, sha.unifLocs[UNIFPCAMERA]);
+
+  /* Set spot light position in unifs based on spotCam translation. */
+  vecCopy(3, (spotCam.isometry).translation, camPosition);
+  uniformVector3(camPosition, sha.unifLocs[UNIFPLIGHTSPOT]);
+  /* Set spot angle in unifs based on spotCam frustum angle. */
+  glUniform1f(sha.unifLocs[UNIFANGLESPOT], cosSpot);
+  /* Set spot direction in unifs based on spotCam direction. */
+  double camEyeCoords[3] = {0.0, 0.0, 1.0};
+  double camDirection[3];
+  isoRotateVector(&(spotCam.isometry), camEyeCoords, camDirection);
+  vecUnit(3, camDirection, camDirection);
+  uniformVector3(camDirection, sha.unifLocs[UNIFDSPOT]);
 }
 
 
-double cameraRho;
-double cameraPhi;
-double cameraTheta;
 bodyBody grassBody;
 bodyBody rockBody;
 bodyBody waterBody;
 bodyBody epcotPillBody;
 /* Initializes the lights, camera, and bodies in the scene. Returns 0 if
 successful, non-zero otherwise. */
-int initializeScene(void){
+int initializeScene(void) {
   /* Configure the camera. */
-  cameraRho = 256.0;
-  cameraPhi = M_PI / 4.0;
-  cameraTheta = 0.0;
-  camLookAt(&cam, camTarget, cameraRho, cameraPhi, cameraTheta);
 	camSetProjectionType(&cam, camPERSPECTIVE);
-	camSetFrustum(&cam, M_PI / 6.0, cameraRho, 10.0, screenWidth, screenHeight);
+  camSetProjectionType(&spotCam, camPERSPECTIVE);
+
+  /* Compute angle for spotlight (fixed). */
+	cosSpot = cos(spotCamTheta/2.0);
+
+  /* Set cam, camSpot and spot light isometry/ */
+	setCamerasPositions();
 
   /* Initialize grass body and texture. */
   if (bodyInitialize(&grassBody, AUXDIM, TEXNUM))
@@ -424,16 +530,10 @@ int initializeScene(void){
 	uniformVector3(cLight, sha.unifLocs[UNIFCLIGHT]);
 	uniformVector3(ambientLight, sha.unifLocs[UNIFAMBIENTLIGHT]);
 
-  /* Set pLightSpot, cLightSpot, and dSpot. */
-  GLdouble pLightSpot[3] = {50.0, 0.0, 5.0};
+  /* Set cLightSpot. */
   GLdouble cLightSpot[3] = {1.0, 1.0, 1.0};
-  GLdouble dSpot[3] = {0.0, -1.0, 0.5};
-  uniformVector3(pLightSpot, sha.unifLocs[UNIFPLIGHTSPOT]);
 	uniformVector3(cLightSpot, sha.unifLocs[UNIFCLIGHTSPOT]);
-  uniformVector3(dSpot, sha.unifLocs[UNIFDSPOT]);
 
-  /* Set camera position. */
-  setCameraPosition();
   return 0;
 }
 
@@ -449,7 +549,7 @@ void destroyScene(void) {
 
 /* Sets individual body's isometry and send it to the shader program. Then
 renders the body. */
-void renderBody(bodyBody *body, GLdouble trans[3], GLdouble rot[3][3]) {
+void renderBodyRegularly(bodyBody *body, GLdouble trans[3], GLdouble rot[3][3]) {
   /* Update body's isometry. */
   isoSetTranslation(&(body->isometry), trans);
 	isoSetRotation(&(body->isometry), rot);
@@ -463,15 +563,15 @@ void renderBody(bodyBody *body, GLdouble trans[3], GLdouble rot[3][3]) {
   /* Load shininess and texture, then render */
 	glUniform1f(sha.unifLocs[UNIFSHININESS], body->aux[0]); // Gl function
 	texRender((body->tex[0]), GL_TEXTURE0, 0, sha.unifLocs[UNIFTEXTURE]);
-	meshglRender(body->mesh);
+	meshglRender(body->mesh, 0);
 	texUnrender((body->tex[0]), 0);
 }
 
 
 double angle = 0.0;
 double waterLevel = 3.0;
-/* Renders the scene. */
-void render(double oldTime, double newTime) {
+/* Renders the scene "regularly". */
+void renderRegularly(double oldTime, double newTime) {
   /* Clear buffer and shader program. */
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUseProgram(sha.program);
@@ -484,24 +584,99 @@ void render(double oldTime, double newTime) {
 
   /* Individually done for each body/mesh/texture/etc */
   /* Render grass body. */
-  renderBody(&grassBody, trans, rot);
+  renderBodyRegularly(&grassBody, trans, rot);
 
   /* Render rock body. */
-  renderBody(&rockBody, trans, rot);
+  renderBodyRegularly(&rockBody, trans, rot);
 
   /* Render water body. */
   waterLevel += sin(newTime)/500;
   double transWater[3] = {0.0, 0.0, waterLevel};
-  renderBody(&waterBody, transWater, rot);
+  renderBodyRegularly(&waterBody, transWater, rot);
 
   /* Render epcot's spicy body. */
   double transepcot[3] = {50.0, 50.0, 0.0};
-  renderBody(&epcotPillBody, transepcot, rot);
+  renderBodyRegularly(&epcotPillBody, transepcot, rot);
 
   /* Send our own viewing transformation P C^-1 to the shaders */
 	GLdouble viewing[4][4];
 	camGetProjectionInverseIsometry(&cam, viewing);
 	uniformMatrix44(viewing, sha.unifLocs[UNIFVIEWING]);
+
+  /* Load spot light's PC^-1 into the regular shader. */
+  double spotPCInverse[4][4];
+  camGetProjectionInverseIsometry(&spotCam, spotPCInverse);
+  uniformMatrix44(spotPCInverse, sha.unifLocs[UNIFVIEWINGS]);
+}
+
+
+/* Sets individual body's isometry and send it to the shader program. Then
+renders the body. */
+void renderBodyShadowly(bodyBody *body, GLdouble trans[3], GLdouble rot[3][3]) {
+  /* Update body's isometry. */
+  isoSetTranslation(&(body->isometry), trans);
+	isoSetRotation(&(body->isometry), rot);
+
+  /* Load isometry into shader. */
+  GLdouble model[4][4];
+	isoGetHomogeneous(&(body->isometry), model);
+	uniformMatrix44(model, sha.unifLocs[UNIFMODELING]);
+  uniformMatrix44(model, shadowSha.unifLocs[UNIFMODELING]);
+
+  /* Simply render for shadow. */
+	meshglRender(body->mesh, 1);
+}
+
+
+/* Renders the scene "shadowly"". */
+void renderShadowly(double oldTime, double newTime) {
+  /* Clear buffer and shader program. */
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glUseProgram(shadowSha.program);
+
+	/* Update isometry for bodies. */
+	GLdouble trans[3] = {0.0, 0.0, 0.0};
+	GLdouble axis[3] = {1.0 / sqrt(3.0), 1.0 / sqrt(3.0), 1.0 / sqrt(3.0)};
+	GLdouble rot[3][3];
+	mat33AngleAxisRotation(angle, axis, rot);
+
+  /* Individually done for each body/mesh/texture/etc */
+  /* Render grass body. */
+  GLdouble grassRGB[3] = {0.0, 1.0, 0.0};
+  uniformVector3(grassRGB, shadowSha.unifLocs[UNIFSHADOWRGB]);
+  renderBodyShadowly(&grassBody, trans, rot);
+
+  /* Render rock body. */
+  GLdouble rockRGB[3] = {0.3, 0.3, 0.3};
+  uniformVector3(rockRGB, shadowSha.unifLocs[UNIFSHADOWRGB]);
+  renderBodyShadowly(&rockBody, trans, rot);
+
+  /* Render water body. */
+  waterLevel += sin(newTime)/500;
+  double transWater[3] = {0.0, 0.0, waterLevel};
+  GLdouble waterRGB[3] = {0.0, 0.0, 1.0};
+  uniformVector3(waterRGB, shadowSha.unifLocs[UNIFSHADOWRGB]);
+  renderBodyShadowly(&waterBody, transWater, rot);
+
+  /* Render epcot's spicy body. */
+  double transepcot[3] = {50.0, 50.0, 0.0};
+  GLdouble epcotRGB[3] = {0.0, 1.0, 1.0};
+  uniformVector3(epcotRGB, shadowSha.unifLocs[UNIFSHADOWRGB]);
+  renderBodyShadowly(&epcotPillBody, transepcot, rot);
+
+  /* Send our own viewing transformation P C^-1 to the shaders */
+	GLdouble viewing[4][4];
+	camGetProjectionInverseIsometry(&spotCam, viewing);
+	uniformMatrix44(viewing, shadowSha.unifLocs[UNIFVIEWING]);
+}
+
+
+/* Renders the scene. */
+void render(double oldTime, double newTime) {
+  shadowRenderFirst(&map);
+  renderShadowly(oldTime, newTime);
+  shadowUnrenderFirst(&map);
+  renderRegularly(oldTime, newTime);
 }
 
 
@@ -546,7 +721,7 @@ void handleKeyAny(GLFWwindow* window, int key, int s, int a, int m) {
 		waterLevel += 0.1;
 	camSetFrustum(&cam, M_PI / 6.0, cameraRho, 10.0, screenWidth, screenHeight);
 	camLookAt(&cam, camTarget, cameraRho, cameraPhi, cameraTheta);
-	setCameraPosition();
+	setCamerasPositions();
 }
 
 
@@ -618,6 +793,8 @@ int main(void) {
 		return 5;
 	if (initializeMeshes() != 0)
 		return 6;
+  if (initializeShadowMap() != 0)
+		return 7;
 	initializeScene(); // Where body initialization happens
 
   /* Run the program. */
@@ -636,6 +813,7 @@ int main(void) {
   destroyShading();
   destroyMeshes();
   destroyScene();
+  destroyShadowMap();
 	glfwDestroyWindow(window);
   glfwTerminate();
   return 0;

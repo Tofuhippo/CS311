@@ -7,7 +7,7 @@ Main abstracted file that implements ray tracing.
 */
 
 /* On macOS, compile with...
-    clang 600mainSphere.c 000pixel.o -lglfw -framework OpenGL
+    clang 610mainTexturing.c 000pixel.o -lglfw -framework OpenGL
 */
 
 #include <stdio.h>
@@ -16,10 +16,11 @@ Main abstracted file that implements ray tracing.
 #include "000pixel.h"
 #include <GLFW/glfw3.h>
 
-#include "120vector.c"
+#include "610vector.c"
 #include "140matrix.c"
-#include "140isometry.c"
+#include "610isometry.c"
 #include "600camera.c"
+#include "040texture.c"
 
 #define SCREENWIDTH 512
 #define SCREENHEIGHT 512
@@ -36,6 +37,9 @@ int cameraMode = 0;
 isoIsometry isomA, isomB;
 double radiusA = 1.0, radiusB = 1.5;
 double colorA[3] = {1.0, 0.0, 1.0}, colorB[3] = {1.0, 1.0, 0.0};
+
+/* Initialize texture. */
+texTexture tex;
 
 /* Rendering ******************************************************************/
 
@@ -87,6 +91,23 @@ rayRecord sphereIntersection(const isoIsometry *iso, double radius,
 	return result;
 }
 
+
+/* Fills the RGB color with the color sampled from the specified texture. */
+void sphereColor(const isoIsometry *isom, double radius, const double e[3],
+		const double d[3], double tEnd, const texTexture *tex, double rgb[3]) {
+			double xWorld[3], xLocal[3];
+			double dScaled[3];
+			vecScale(3, tEnd, d, dScaled);
+			vecAdd(3, e, dScaled, xWorld);
+			isoUntransformPoint(isom, xWorld, xLocal);
+
+			double rho, phi, theta;
+			vec3Rectangular(xLocal, &radius, &phi, &theta);
+
+			texSample(tex, phi/M_PI, theta/(2*M_PI), rgb);
+}
+
+
 void render(void) {
 	double homog[4][4], screen[4], world[4], e[3], d[3], rgb[3];
 	double tStart, tEnd;
@@ -131,9 +152,11 @@ void render(void) {
 			/* Choose the winner. */
 			vec3Set(0.0, 0.0, 0.0, rgb);
 			if (tEnd == recA.t) {
-				vecCopy(3, colorA, rgb);
+				sphereColor(&isomA, radiusA, e, d, tEnd, &tex, rgb);
+				//vecCopy(3, colorA, rgb);
 			} else if (tEnd == recB.t) {
-				vecCopy(3, colorB, rgb);
+				sphereColor(&isomB, radiusB, e, d, tEnd, &tex, rgb);
+				//vecCopy(3, colorB, rgb);
 			}
 			pixSetRGB(i, j, rgb[0], rgb[1], rgb[2]);
 		}
@@ -203,6 +226,7 @@ int main(void) {
 		pixSetKeyRepeatHandler(handleKeyAny);
 		pixSetKeyUpHandler(handleKeyAny);
 		pixSetTimeStepHandler(handleTimeStep);
+		texInitializeFile(&tex, "nathan_mannes.jpg");
 		pixRun();
 		return 0;
 	}

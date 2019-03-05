@@ -7,7 +7,7 @@ Main abstracted file that implements ray tracing.
 */
 
 /* On macOS, compile with...
-    clang 600mainSphere.c 000pixel.o -lglfw -framework OpenGL
+    clang 620mainLighting.c 000pixel.o -lglfw -framework OpenGL
 */
 
 #include <stdio.h>
@@ -16,10 +16,11 @@ Main abstracted file that implements ray tracing.
 #include "000pixel.h"
 #include <GLFW/glfw3.h>
 
-#include "120vector.c"
+#include "610vector.c"
 #include "140matrix.c"
-#include "140isometry.c"
+#include "610isometry.c"
 #include "600camera.c"
+#include "040texture.c"
 
 #define SCREENWIDTH 512
 #define SCREENHEIGHT 512
@@ -36,6 +37,20 @@ int cameraMode = 0;
 isoIsometry isomA, isomB;
 double radiusA = 1.0, radiusB = 1.5;
 double colorA[3] = {1.0, 0.0, 1.0}, colorB[3] = {1.0, 1.0, 0.0};
+
+/* Light stuff. */
+// Diffuse
+double dLight[3] = {10.0, 10.0, 0.0}; // World coords
+double cLight[3] = {1.0, 1.0, 1.0};
+// Specular
+double shininess = 10.0;
+double cSpec[3] = {1.0, 1.0, 1.0};
+// Ambient
+double cAmbient[3] = {0.2, 0.2, 0.2};
+
+
+/* Initialize texture. */
+texTexture tex;
 
 /* Rendering ******************************************************************/
 
@@ -87,6 +102,63 @@ rayRecord sphereIntersection(const isoIsometry *iso, double radius,
 	return result;
 }
 
+/* Fills the RGB color with the color sampled from the specified texture. */
+void sphereColor(const isoIsometry *isom, double radius, const double e[3],
+		const double d[3], double tEnd, const texTexture *tex, double rgb[3]) {
+			double xWorld[3], xLocal[3];
+			double dScaled[3];
+			vecScale(3, tEnd, d, dScaled);
+			vecAdd(3, e, dScaled, xWorld);
+			isoUntransformPoint(isom, xWorld, xLocal);
+
+			double rho, phi, theta;
+			vec3Rectangular(xLocal, &radius, &phi, &theta);
+
+			double cDiff[3]; // get cDiff from textures
+			texSample(tex, phi/M_PI, theta/(2*M_PI), cDiff);
+
+			/* Apply Lighting. */
+			double dNormal[3];
+			vecSubtract(3, xWorld, isom->translation, dNormal);
+			vecUnit(3, dNormal, dNormal); // Got dNormal (world)
+			vecUnit(3, dLight, dLight); // Make dLight unit lol (world)
+			double iDiff = vecDot(3, dLight, dNormal);
+			if (iDiff < 0) {
+				iDiff = 0;
+			}
+			/* Apply diffuse and specular IFF iDiff > 0 because we set iSpec to 0
+			if iDiff <= 0. */
+			if (iDiff > 0) {
+				/* Add diffuse lighting. */
+				rgb[0] = iDiff * cDiff[0] * cLight[0];
+				rgb[1] = iDiff * cDiff[1] * cLight[1];
+				rgb[2] = iDiff * cDiff[2] * cLight[2];
+
+				/* Now do specular reflection. */
+				double dCamera[3];
+				vecSubtract(3, camera.isometry.translation, xWorld, dCamera); // Got dCamera (world)
+				double dRefl[3], dReflMidStep[3]; // Reflection of dCamera across dNormal
+				double dReflMultiplier = 2 * vecDot(3, dCamera, dNormal);
+				vecScale(3, dReflMultiplier, dNormal, dReflMidStep);
+				vecSubtract(3, dReflMidStep, dCamera, dRefl);
+				vecUnit(3, dRefl, dRefl); // Got dRefl
+				double iSpec = vecDot(3, dRefl, dLight);
+				if (iSpec < 0) {
+					iSpec = 0;
+				}
+				iSpec = pow(iSpec, shininess);
+
+				/* Add specular lighting. */
+				rgb[0] += iSpec * cSpec[0] * cLight[0];
+				rgb[1] += iSpec * cSpec[1] * cLight[1];
+				rgb[2] += iSpec * cSpec[2] * cLight[2];
+			}
+			/* Add ambient lighting. */
+			rgb[0] += cDiff[0] * cAmbient[0];
+			rgb[1] += cDiff[1] * cAmbient[1];
+			rgb[2] += cDiff[2] * cAmbient[2];
+}
+
 void render(void) {
 	double homog[4][4], screen[4], world[4], e[3], d[3], rgb[3];
 	double tStart, tEnd;
@@ -129,11 +201,13 @@ void render(void) {
 				tEnd = recB.t;
 			}
 			/* Choose the winner. */
-			vec3Set(0.0, 0.0, 0.0, rgb);
+			vec3Set(0.0, 0.0, 0.0, rgb); // rgb is set to 0, 0, 0
 			if (tEnd == recA.t) {
-				vecCopy(3, colorA, rgb);
+				sphereColor(&isomA, radiusA, e, d, tEnd, &tex, rgb);
+				//vecCopy(3, colorA, rgb);
 			} else if (tEnd == recB.t) {
-				vecCopy(3, colorB, rgb);
+				sphereColor(&isomB, radiusB, e, d, tEnd, &tex, rgb);
+				//vecCopy(3, colorB, rgb);
 			}
 			pixSetRGB(i, j, rgb[0], rgb[1], rgb[2]);
 		}
@@ -155,6 +229,10 @@ void handleKeyCamera(int key) {
 		cameraRho *= 0.9;
 	else if (key == GLFW_KEY_C)
 		cameraRho *= 1.1;
+	else if (key == GLFW_KEY_1)
+		dLight[0] += 0.1;
+	else if (key == GLFW_KEY_2)
+		dLight[0] -= 0.1;
 	camSetFrustum(&camera, M_PI / 6.0, cameraRho, 10.0, SCREENWIDTH,
 		SCREENHEIGHT);
 	camLookAt(&camera, cameraTarget, cameraRho, cameraPhi, cameraTheta);
@@ -163,7 +241,8 @@ void handleKeyCamera(int key) {
 void handleKeyAny(int key, int shiftIsDown, int controlIsDown,
 		int altOptionIsDown, int superCommandIsDown) {
 	if (key == GLFW_KEY_W || key == GLFW_KEY_A || key == GLFW_KEY_S ||
-			key == GLFW_KEY_D || key == GLFW_KEY_E || key == GLFW_KEY_C)
+			key == GLFW_KEY_D || key == GLFW_KEY_E || key == GLFW_KEY_C ||
+			key == GLFW_KEY_1 || key == GLFW_KEY_2)
 		handleKeyCamera(key);
 }
 
@@ -203,6 +282,7 @@ int main(void) {
 		pixSetKeyRepeatHandler(handleKeyAny);
 		pixSetKeyUpHandler(handleKeyAny);
 		pixSetTimeStepHandler(handleTimeStep);
+		texInitializeFile(&tex, "nathan_mannes.jpg");
 		pixRun();
 		return 0;
 	}

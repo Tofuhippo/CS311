@@ -605,7 +605,7 @@ void renderRegularly(double oldTime, double newTime) {
   double transepcot[3] = {50.0, 50.0, 0.0};
   renderBodyRegularly(&epcotPillBody, transepcot, rot);
 
-  /* Send our own viewing transformation P C^-1 to the shaders */
+  /* Send our own viewing transformation PC^-1 to the shaders */
 	GLdouble viewing[4][4];
 	camGetProjectionInverseIsometry(&cam, viewing);
 	uniformMatrix44(viewing, sha.unifLocs[UNIFVIEWING]);

@@ -7,7 +7,7 @@ Main abstracted file that implements ray tracing.
 */
 
 /* On macOS, compile with...
-    clang 630mainShadows.c 000pixel.o -lglfw -framework OpenGL
+    clang 640mainMirrors.c 000pixel.o -lglfw -framework OpenGL
 */
 
 #include <stdio.h>
@@ -34,6 +34,7 @@ double cameraRho = 10.0, cameraPhi = M_PI / 3.0, cameraTheta = -M_PI / 3.0;
 int cameraMode = 0;
 
 /* These are our two sphere bodies. */
+/* We will make isomA the mirror. */
 isoIsometry isomA, isomB;
 double radiusA = 1.0, radiusB = 1.5;
 double colorA[3] = {1.0, 0.0, 1.0}, colorB[3] = {1.0, 1.0, 0.0};
@@ -184,6 +185,38 @@ void sphereColor(const isoIsometry *isom, double radius, const double e[3],
 			//printf("RGB[0] %f, RGB[1] %f, RGB[2] %f\n", rgb[0], rgb[1], rgb[2]);
 }
 
+/* Called on isomA. Sends another ray from sphere to find a reflected color. */
+void sphereReflection(const isoIsometry *isom, double radius, const double e[3],
+		const double d[3], double tEnd, const texTexture *tex, double rgb[3]) {
+			/* Get xWorld to send new ray from. */
+			double xWorld[3];
+			double dScaled[3];
+			vecScale(3, tEnd, d, dScaled);
+			vecAdd(3, e, dScaled, xWorld);
+
+			/* Get dNormal to reflect across. */
+			double dNormal[3];
+			vecSubtract(3, xWorld, isom->translation, dNormal);
+			vecUnit(3, dNormal, dNormal); // Got dNormal (world)
+
+			/* Calculate reflection of dCamera across dNormal. */
+			double dCamera[3];
+			vecSubtract(3, camera.isometry.translation, xWorld, dCamera); // Got dCamera (world)
+			double dRefl[3], dReflMidStep[3]; // Reflection of dCamera across dNormal
+			double dReflMultiplier = 2 * vecDot(3, dCamera, dNormal);
+			vecScale(3, dReflMultiplier, dNormal, dReflMidStep);
+			vecSubtract(3, dReflMidStep, dCamera, dRefl);
+			vecUnit(3, dRefl, dRefl); // Got dRefl
+
+			double tEndNew = INFINITY;
+			rayRecord reflectRay = sphereIntersection(&isomB, radiusB, xWorld,
+																								dRefl, EPSILON, tEndNew);
+			vec3Set(0.0, 0.0, 0.0, rgb);
+			if (reflectRay.intersected) {
+				sphereColor(&isomB, radiusB, xWorld, dRefl, reflectRay.t, tex, rgb);
+			}
+}
+
 void render(void) {
 	double homog[4][4], screen[4], world[4], e[3], d[3], rgb[3];
 	double tStart, tEnd;
@@ -228,7 +261,7 @@ void render(void) {
 			/* Choose the winner. */
 			vec3Set(0.0, 0.0, 0.0, rgb); // rgb is set to 0, 0, 0
 			if (tEnd == recA.t) {
-				sphereColor(&isomA, radiusA, e, d, tEnd, &tex, rgb);
+				sphereReflection(&isomA, radiusA, e, d, tEnd, &tex, rgb);
 				//vecCopy(3, colorA, rgb);
 			} else if (tEnd == recB.t) {
 				sphereColor(&isomB, radiusB, e, d, tEnd, &tex, rgb);
@@ -295,7 +328,7 @@ int main(void) {
 		camSetFrustum(&camera, M_PI / 6.0, cameraRho, 10.0, SCREENWIDTH,
 			SCREENHEIGHT);
 		camLookAt(&camera, cameraTarget, cameraRho, cameraPhi, cameraTheta);
-		double center[3] = {0.0, 0.0, 0.0}, axis[3] = {1.0, 0.0, 0.0}, r[3][3];
+		double center[3] = {-1.0, -1.0, 0.0}, axis[3] = {1.0, 0.0, 0.0}, r[3][3];
 		mat33AngleAxisRotation(0.0, axis, r);
 		isoSetTranslation(&isomA, center);
 		isoSetRotation(&isomA, r);

@@ -127,21 +127,30 @@ void sphereColor(const isoIsometry *isom, double radius, const double e[3],
 				iDiff = 0;
 			}
 
-			/* Shadowing. If the normal is the same direction as dlight +- 90, there
-			is no diffuse, and therefore no need to test shadowing */
+			/* Shadowing. */
 			double shadowed = 0; // True = 1/False = 0
 			double dtoLight[3];
 			double tStartShadow = EPSILON;
 			double tEndShadow = INFINITY;
 			vecScale(3, -1, dLight, dtoLight); // Get direction TOWARDS the light
-			/* Only send ray for shadowing if iDiff > 0. */
+
+			/* Only send ray for shadowing if iDiff > 0. If the normal is the same
+			direction as dlight +- 90, there is no diffuse, and therefore no need
+			to test shadowing */
 			if (iDiff > 0) {
-				// Send new ray towards light. e is now xWorld, d is now dtoLight
+				/* Send new ray from pFrag towards light. e (pFrag) is now xWorld,
+				d is now dtoLight. Test for both body A and B. */
+				rayRecord shadowRayA = sphereIntersection(&isomA, radiusA, xWorld,
+																					  dtoLight, tStartShadow, tEndShadow);
+				rayRecord shadowRayB = sphereIntersection(&isomA, radiusB, xWorld,
+																					  dtoLight, tStartShadow, tEndShadow);
+				if(shadowRayA.intersected != 0 && shadowRayB.intersected != 0)
+					shadowed = 1;
 			}
 
 			/* Apply diffuse and specular IFF iDiff > 0 because we set iSpec to 0
 			if iDiff <= 0. */
-			if (iDiff > 0 && shadowed) {
+			if (iDiff > 0 && !shadowed) {
 				/* Add diffuse lighting. */
 				rgb[0] = iDiff * cDiff[0] * cLight[0];
 				rgb[1] = iDiff * cDiff[1] * cLight[1];
@@ -287,7 +296,7 @@ int main(void) {
 		mat33AngleAxisRotation(0.0, axis, r);
 		isoSetTranslation(&isomA, center);
 		isoSetRotation(&isomA, r);
-		vec3Set(1.0, 0.0, 1.0, center);
+		vec3Set(2.0, 0.0, 1.0, center);
 		isoSetTranslation(&isomB, center);
 		isoSetRotation(&isomB, r);
 		/* Initialize and run the user interface. */

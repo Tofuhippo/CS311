@@ -23,22 +23,18 @@ rayResponse planeIntersection(const void *body, const rayQuery *query) {
 		return result;
 	}
 	double t = -eLocal[2]/dLocal[2];
-	if (result.t < query->tStart) {
-		result.intersected = 0;
-		result.t = INFINITY;
-		return result;
+	if (query->tStart <= t && t <= query->tEnd) {
+		if (dLocal[2] > 0) { // intersecting from below
+			result.intersected = 1;
+			result.t = t;
+			return result;
+		}
+		if (dLocal[2] < 0) {// intersecting from above
+			result.intersected = -1;
+			result.t = t;
+			return result;
+		}
 	}
-	if (dLocal[2] > 0) { // intersecting from below
-		result.intersected = 1;
-		result.t = t;
-		return result;
-	}
-	if (dLocal[2] < 0) {// intersecting from above
-		result.intersected = -1;
-		result.t = t;
-		return result;
-	}
-	result.t = INFINITY;
 	result.intersected = 0;
 	return result;
 }

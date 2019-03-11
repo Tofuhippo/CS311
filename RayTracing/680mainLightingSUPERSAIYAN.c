@@ -9,7 +9,7 @@ POLYMORPHISM BABY.
 
 
 /* On macOS, compile with...
-    clang 670mainPlane.c 000pixel.o -lglfw -framework OpenGL
+    clang 681mainLightingSUPERSAIYAN.c 000pixel.o -lglfw -framework OpenGL
 */
 
 #include <stdio.h>
@@ -22,60 +22,42 @@ POLYMORPHISM BABY.
 #include "040texture.c"
 #include "610isometry.c"
 #include "600camera.c"
-#include "650ray.c"
+#include "680ray.c"
+#include "680light.c"
 
-/* Directions can be local or global, as long as they're consistent. */
-void diffuseAndSpecular(const double dNormal[3], const double dLight[3],
-		const double dCamera[3], const double cDiff[3], const double cSpec[3],
-		double shininess, const double cLight[3], double rgb[3]) {
-	/* Diffuse reflection. */
-	double diffuse[3];
-	double iDiff = vecDot(3, dNormal, dLight);
-	if (iDiff <= 0.0)
-		iDiff = 0.0;
-	diffuse[0] = iDiff * cDiff[0] * cLight[0];
-	diffuse[1] = iDiff * cDiff[1] * cLight[1];
-	diffuse[2] = iDiff * cDiff[2] * cLight[2];
-	/* Specular reflection. dRefl = 2 (dCam . dNorm) dNorm - dCam. */
-	double twiceDot, dRefl[3];
-	twiceDot = 2.0 * vecDot(3, dNormal, dCamera);
-	vecScale(3, twiceDot, dNormal, dRefl);
-	vecSubtract(3, dRefl, dCamera, dRefl);
-	double iSpec = vecDot(3, dRefl, dLight);
-	if (iDiff <= 0.0 || iSpec <= 0.0)
-		iSpec = 0.0;
-	iSpec = pow(iSpec, shininess);
-	double specular[3];
-	specular[0] = iSpec * cSpec[0] * cLight[0];
-	specular[1] = iSpec * cSpec[1] * cLight[1];
-	specular[2] = iSpec * cSpec[2] * cLight[2];
-	/* Output. */
-	vecAdd(3, diffuse, specular, rgb);
-}
 
 #define SCREENWIDTH 512
 #define SCREENHEIGHT 512
 #define BODYNUM 6
+#define LIGHTNUM 1
 
-double dLightRaw[3] = {1.0, 1.0, 1.0};//, dLight[3];
+double dLightRaw[3] = {1.0, 1.0, 1.0}, dLight[3];
 double cLight[3] = {1.0, 1.0, 1.0};
 double cAmbient[3] = {0.1, 0.1, 0.1};
 
-#include "650cylinder.c"
-#include "660sphere.c"
-#include "670plane.c"
+#include "681cylinderSUPERSAIYAN.c"
+#include "681sphereSUPERSAIYAN.c"
+#include "681planeSUPERSAIYAN.c"
+#include "680omnidirectional.c"
+
 
 camCamera camera;
 double cameraTarget[3] = {0.0, 0.0, 0.0};
 double cameraRho = 10.0, cameraPhi = M_PI / 3.0, cameraTheta = -M_PI / 3.0;
 int cameraMode = 0;
 
+/* Make textures. */
 texTexture textureRed, textureGreen, textureBlue, textureNathan;
+/* Make bodies. */
 cylCylinder cylRed, cylGreen, cylBlue;
 sphereSphere sphereSmall, sphereBig;
 plaPlane plane;
-void *bodies[BODYNUM] = {&cylRed, &cylGreen, &cylBlue,
+const void *bodies[BODYNUM] = {&cylRed, &cylGreen, &cylBlue,
 	                       &sphereSmall, &sphereBig, &plane};
+/* Make lights. */
+omniLight omLight;
+const void *lights[LIGHTNUM] = {&omLight};
+
 
 /* Rendering ******************************************************************/
 
@@ -123,7 +105,8 @@ void render(void) {
 			rayClass **class;
 			if (index >= 0) {
 				class = (rayClass **)(bodies[index]);
-				(*class)->color(bodies[index], &query, &response, rgb);
+				(*class)->color(bodies[index], &query, &response, BODYNUM, bodies,
+					              LIGHTNUM, lights, cAmbient, rgb);
 			} else
 				vec3Set(0.0, 0.0, 0.0, rgb);
 			pixSetRGB(i, j, rgb[0], rgb[1], rgb[2]);
@@ -218,6 +201,13 @@ void initializePlane(plaPlane *plane, const double rot[3][3],
 	plane->texture = texture;
 }
 
+void initializeOmniLight(omniLight *omLight, const double pLight[3],
+		const double cLight[3]) {
+	omLight->class = &omniClass;
+	vecCopy(3, pLight, omLight->pLight);
+	vecCopy(3, cLight, omLight->cLight);
+}
+
 int main(void) {
 	if (pixInitialize(SCREENWIDTH, SCREENHEIGHT, "Ray Tracing") != 0)
 		return 1;
@@ -254,6 +244,10 @@ int main(void) {
 		initializeSphere(&sphereSmall, 1.0, rot, centerSmallSphere, &textureNathan);
 
 		initializePlane(&plane, rot, center, &textureNathan);
+
+		double pLightOmni[3] = {1.0, 1.0, 1.0};
+		double cLightOmni[3] = {1.0, 1.0, 1.0};
+		initializeOmniLight(&omLight, pLightOmni, cLightOmni);
 
 		/* Initialize and run the user interface. */
 		pixSetKeyDownHandler(handleKeyDown);

@@ -1,8 +1,5 @@
 
 
-
-/* The cylinder is infinitely long. It is centered on its local z-axis and has
-the prescribed radius. Its class should be set to cylClass. */
 typedef struct sphereSphere sphereSphere;
 struct sphereSphere {
 	rayClass *class;
@@ -55,8 +52,7 @@ void sphereTexCoords(const double xLocal[3], double st[2], double radius) {
 
 void sphereColor(const void *body, const rayQuery *query,
 	const rayResponse *response, int bodyNum, const void *bodies[],
-	int lightNum, const void *lights[], const double cAmbient[3],
-	double rgb[3]) {
+	int lightNum, const void *lights[], const double cAmbient[3], double rgb[3]) {
 		vec3Set(0.0, 0.0, 0.0, rgb);
 		const sphereSphere *sphere = (const sphereSphere *)body;
 		/* x = e + t d. */
@@ -72,6 +68,8 @@ void sphereColor(const void *body, const rayQuery *query,
 
 		lightResponse light;
 		lightClass **class;
+		rayResponse checkShadowRay;
+		rayQuery shadowQuery;
 		double lightContrib[3];
 		for (int i = 0; i < lightNum; i++) {
 			vec3Set(0.0, 0.0, 0.0, lightContrib);
@@ -79,20 +77,32 @@ void sphereColor(const void *body, const rayQuery *query,
 			class = (lightClass **)(lights[i]);
 			light = (*class)->lighting(lights[i], xWorld);
 
-			/* Do lighting calculations in local coordinates. */
-			double cSpec[3] = {0.5, 0.5, 0.5}, shininess = 16.0;
-			double dNormalLocal[3], dLightLocal[3];
-			vecUnit(2, xLocal, dNormalLocal);
-			isoUnrotateVector(&(sphere->isometry), light.dLight, dLightLocal);
-			double pCameraLocal[3], dCameraLocal[3];
-			isoUntransformPoint(&(sphere->isometry), query->e, pCameraLocal);
-			vecSubtract(3, pCameraLocal, xLocal, dCameraLocal);
-			vecUnit(3, dCameraLocal, dCameraLocal);
-			rayDiffuseAndSpecular(dNormalLocal, dLightLocal, dCameraLocal, cDiff,
-				cSpec, shininess, light.cLight, lightContrib);
+			/* Cast a ray toward the light. Incorporate the light's contribution iff
+			the ray does not intersect the scene. */
+			shadowQuery.tStart = rayEPSILON;
+			shadowQuery.tEnd = light.distance; //position of light - xWorld == len(dLight)
+			vecCopy(3, light.dLight, shadowQuery.d);
+			vecCopy(3, xWorld, shadowQuery.e);
+			int inShadow = -1; //refers to the index of the body it insersects; -1 means no intersection
+			checkShadowRay = rayIntersection(bodyNum, bodies, &shadowQuery, &inShadow);
+			// remember that inShadow is updated via side effect
+
+			if (inShadow == -1) { //no shadow -> no intersection
+				/* Do lighting calculations in local coordinates. */
+				double cSpec[3] = {0.5, 0.5, 0.5}, shininess = 16.0;
+				double dNormalLocal[3], dLightLocal[3];
+				vecUnit(2, xLocal, dNormalLocal);
+				dNormalLocal[2] = 0.0;
+				isoUnrotateVector(&(sphere->isometry), light.dLight, dLightLocal);
+				double pCameraLocal[3], dCameraLocal[3];
+				isoUntransformPoint(&(sphere->isometry), query->e, pCameraLocal);
+				vecSubtract(3, pCameraLocal, xLocal, dCameraLocal);
+				vecUnit(3, dCameraLocal, dCameraLocal);
+				rayDiffuseAndSpecular(dNormalLocal, dLightLocal, dCameraLocal, cDiff,
+					cSpec, shininess, light.cLight, lightContrib);
+			}
 			vecAdd(3, rgb, lightContrib, rgb);
 		}
-
 		/* Ambient light. */
 		rgb[0] += cDiff[0] * cAmbient[0];
 		rgb[1] += cDiff[1] * cAmbient[1];

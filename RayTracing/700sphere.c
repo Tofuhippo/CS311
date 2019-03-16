@@ -91,8 +91,7 @@ void sphereColor(const void *body, const rayQuery *query,
 				/* Do lighting calculations in local coordinates. */
 				double cSpec[3] = {0.5, 0.5, 0.5}, shininess = 16.0;
 				double dNormalLocal[3], dLightLocal[3];
-				vecUnit(2, xLocal, dNormalLocal);
-				dNormalLocal[2] = 0.0;
+				vecUnit(3, xLocal, dNormalLocal);
 				isoUnrotateVector(&(sphere->isometry), light.dLight, dLightLocal);
 				double pCameraLocal[3], dCameraLocal[3];
 				isoUntransformPoint(&(sphere->isometry), query->e, pCameraLocal);

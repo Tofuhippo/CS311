@@ -101,18 +101,28 @@ void render(void) {
 	/* Each screen point is arbitrarily chosen on the near plane. */
 	screen[2] = 0.0;
 	screen[3] = 1.0;
+	/* Orthographic camera. */
+	//double eS[4];
+	//eS[2] = 10.0;
+	//eS[3] = 1.0;
+
 	for (i = 0; i < SCREENWIDTH; i += 1) {
 		screen[0] = i;
+		//eS[0] = i;
 		for (j = 0; j < SCREENHEIGHT; j += 1) {
 			screen[1] = j;
+			//eS[1] = j;
 
 			/* Compute the direction d from the camera to the pixel. */
 			double ppixel[4];
 			mat441Multiply(homog, screen, ppixel);
+			//mat441Multiply(homog, eS, e);
 			/* Apply homogenous division. */
 			for (int x = 0; x < 4; x++){
 				ppixel[x] = ppixel[x] / ppixel[3];
+				//e[x] = e[x] / e[3];
 			}
+			/* Calculate d. */
 			vecSubtract(3, ppixel, e, d);
 
 			/* Prepare to loop over all bodies. */
